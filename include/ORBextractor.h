@@ -77,7 +77,7 @@ protected:
     void ComputeScalePyramid(cv::Mat &image);
 
     void DivideAndFAST(std::vector<std::vector<cv::KeyPoint> >& allKeypoints,
-                       DistributionMethod mode = DISTRIBUTION_NAIVE, bool divideImage = false, int cellSize = 30);
+                       DistributionMethod mode = DISTRIBUTION_NAIVE, bool divideImage = true, int cellSize = 30);
 
     void FAST(cv::Mat image, std::vector<cv::KeyPoint> &keypoints, int &threshold, int level = 0);
 
