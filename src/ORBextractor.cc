@@ -413,7 +413,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
 
 
     std::vector<std::vector<cv::KeyPoint>> allKpts;
-    DivideAndFAST(allKpts, DISTRIBUTION_QUADTREE_ORBSLAMSTYLE, true);
+    DivideAndFAST(allKpts, DISTRIBUTION_QUADTREE, true);
 
     ComputeAngles(allKpts);
 

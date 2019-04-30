@@ -205,9 +205,6 @@ void DistributeKeypointsQuadTree(std::vector<cv::KeyPoint>& kpts, const int &min
 void DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyPoint>& kpts, const int &minX,
                                               const int &maxX, const int &minY, const int &maxY, const int &N)
 {
-    //TODO: fix so results equal orbslam's results
-    // (seems it literally cannot be done, as orbslams implementation is not deterministic)
-
     assert(!kpts.empty());
 
 
@@ -277,21 +274,6 @@ void DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyPoint>& kpts, c
 
         while (current != nodesList.end())
         {
-
-            /*
-            //TODO:remove
-            if (current->nodeKpts[0].pt.x > 0 && current->nodeKpts[0].pt.y > 50 &&
-                current->nodeKpts[0].pt.x < 40 && current->nodeKpts[0].pt.y < 90)
-            {
-                std::cout << "kpt vec of node:\n";
-                for (auto &kpt : current->nodeKpts)
-                {
-                    std::cout << kpt.pt << "\n";
-                }
-            }
-            */
-            //////////////
-
             if (current->leaf)
             {
                 ++current;
@@ -470,43 +452,43 @@ void DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyPoint>& kpts, c
  * @param kpts : keypoints to distribute
  * @param minX, maxX, minY, maxY : relevant image dimensions
  * @param N : number of keypoints to retain
- * @param cellSize : must be larger than 16, lesser than min(width, height)
  */
 void DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, const int &minX, const int &maxX, const int &minY,
-                             const int &maxY, const int &N, const int &cellSize)
+                             const int &maxY, const int &N)
 {
-    //TODO: implement
-    const int width = maxX - minX;
-    const int height = maxY - minY;
+    const float width = maxX - minX;
+    const float height = maxY - minY;
 
-    int c = std::min(width, height);
-    assert(cellSize < c && cellSize > 16);
+    const float ratio = height / width;
+    const int cells = N / 10;
 
-    const int npatchesInX = width / cellSize;
-    const int npatchesInY = height / cellSize;
-    const int patchWidth = std::ceil(width / npatchesInX);
-    const int patchHeight = std::ceil(height / npatchesInY);
+    const int cellCols = cells;
+    const int cellRows = cells * ratio;
+    const int cellWidth = std::ceil(width / cellCols);
+    const int cellHeight = std::ceil(height / cellRows);
 
+    const int nCells = cellCols * cellRows;
+    std::vector<std::vector<cv::KeyPoint>> cellkpts(nCells);
 
-    for (int py = 0; py < npatchesInY; ++py)
+    for (auto &kptVec : cellkpts)
+        kptVec.reserve(kpts.size());
+
+    for (auto &kpt : kpts)
     {
-        int startY = minY + py * patchHeight;
-        int endY = startY + patchHeight + 6;
-        if (startY >= maxY)
-            continue;
-        if (endY > maxY)
-            endY = maxY;
-        for (int px = 0; px < npatchesInX; ++px)
-        {
-            int startX = minX + px * patchWidth;
-            int endX = startX + patchWidth + 6;
-            if (startX >= maxX)
-                continue;
-            if (endX > maxX)
-                endX = maxX;
+        int idx = (int)(kpt.pt.y/cellHeight) * cellCols + (int)(kpt.pt.x/cellWidth);
+        if (idx >= nCells)
+            idx = nCells-1;
+        cellkpts[idx].emplace_back(kpt);
+    }
 
-            //TODO: sort kpts into cells, calculate N and retain N per cell
-        }
+    const int nPerCell = std::ceil((float)N / nCells);
+    kpts.clear();
+    kpts.reserve(N);
+
+    for (auto &kptVec : cellkpts)
+    {
+        RetainBestN(kptVec, nPerCell);
+        kpts.insert(kpts.end(), kptVec.begin(), kptVec.end());
     }
 }
 

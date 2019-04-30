@@ -41,7 +41,7 @@ void DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyPoint>& kpts, c
                                               const int &maxX, const int &minY, const int &maxY, const int &N);
 
 void DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, const int &minX,
-                             const int &maxX, const int &minY, const int &maxY, const int &N, const int& cellSize);
+                             const int &maxX, const int &minY, const int &maxY, const int &N);
 
 CV_INLINE  int myRound( float value )
 {
