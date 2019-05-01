@@ -413,7 +413,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
 
 
     std::vector<std::vector<cv::KeyPoint>> allKpts;
-    DivideAndFAST(allKpts, DISTRIBUTION_QUADTREE, true);
+    DivideAndFAST(allKpts, Distribution::GRID, true);
 
     ComputeAngles(allKpts);
 
@@ -465,7 +465,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
 
 void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
                               std::vector<cv::KeyPoint> &resultKeypoints, cv::OutputArray outputDescriptors,
-                              DistributionMethod distributionMode)
+                              Distribution::DistributionMethod distributionMode, bool distributePerLevel)
 {
     if (inputImage.empty())
         return;
@@ -486,14 +486,15 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
     }
 
 
-    std::vector<std::vector<cv::KeyPoint>> allKpts;
+    std::vector<std::vector<cv::KeyPoint>> allkpts;
 
     //using namespace std::chrono;
     //high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
-    DivideAndFAST(allKpts, distributionMode, true);
+    DivideAndFAST(allkpts, distributionMode, true, 30, distributePerLevel);
 
-    ComputeAngles(allKpts);
+
+    ComputeAngles(allkpts);
 
     //high_resolution_clock::time_point t2 = high_resolution_clock::now();
     //auto d = duration_cast<microseconds>(t2-t1).count();
@@ -503,12 +504,13 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
     int nkpts = 0;
     for (int lvl = 0; lvl < nlevels; ++lvl)
     {
-        nkpts += (int)allKpts[lvl].size();
+        nkpts += (int)allkpts[lvl].size();
     }
     if (nkpts <= 0)
     {
         outputDescriptors.release();
-    } else
+    }
+    else
     {
         outputDescriptors.create(nkpts, 32, CV_8U);
         BRIEFdescriptors = outputDescriptors.getMat();
@@ -517,13 +519,13 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
     resultKeypoints.clear();
     resultKeypoints.reserve(nkpts);
 
-    ComputeDescriptors(allKpts, BRIEFdescriptors);
+    ComputeDescriptors(allkpts, BRIEFdescriptors);
 
     for (int lvl = 0; lvl < nlevels; ++lvl)
     {
         int size = PATCH_SIZE * mvScaleFactor[lvl];
         float scale = mvScaleFactor[lvl];
-        for (auto &kpt : allKpts[lvl])
+        for (auto &kpt : allkpts[lvl])
         {
             kpt.size = size;
             if (lvl)
@@ -531,10 +533,9 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
         }
     }
 
-
     for (int lvl = 0; lvl < nlevels; ++lvl)
     {
-        resultKeypoints.insert(resultKeypoints.end(), allKpts[lvl].begin(), allKpts[lvl].end());
+        resultKeypoints.insert(resultKeypoints.end(), allkpts[lvl].begin(), allkpts[lvl].end());
     }
 }
 
@@ -607,10 +608,10 @@ void ORBextractor::ComputeDescriptors(std::vector<std::vector<cv::KeyPoint>> &al
  * @param divideImage  true-->divide image into cellSize x cellSize cells, run FAST per cell
  * @param cellSize must be greater than 16 and lesser than min(rows, cols) of smallest image in pyramid
  */
-void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allKeypoints,
-                                 DistributionMethod mode, bool divideImage, int cellSize)
+void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts,
+        Distribution::DistributionMethod mode, bool divideImage, int cellSize, bool distributePerLevel)
 {
-    allKeypoints.resize(nlevels);
+    allkpts.resize(nlevels);
 
     const int minimumX = EDGE_THRESHOLD - 3, minimumY = minimumX;
 
@@ -625,9 +626,6 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allKeyp
             const int maximumX = mvImagePyramid[lvl].cols - EDGE_THRESHOLD + 3;
             const int maximumY = mvImagePyramid[lvl].rows - EDGE_THRESHOLD + 3;
 
-            //cv::Range colSelect(minimumX, maximumX);
-            //cv::Range rowSelect(minimumY, maximumY);
-            //cv::Mat levelMat = mvImagePyramid[lvl](rowSelect, colSelect);
 
             this->FAST(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
                        levelKpts, iniThFAST, lvl);
@@ -640,19 +638,21 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allKeyp
             if(levelKpts.empty())
                 continue;
 
-            allKeypoints[lvl].reserve(nfeaturesPerLevelVec[lvl]);
+            allkpts[lvl].reserve(nfeaturesPerLevelVec[lvl]);
 
-            DistributeKeypoints(levelKpts, minimumX, maximumX, minimumY, maximumY, nfeaturesPerLevelVec[lvl], mode);
+            if (distributePerLevel)
+                Distribution::DistributeKeypoints(levelKpts, minimumX, maximumX, minimumY, maximumY,
+                                                  nfeaturesPerLevelVec[lvl], mode);
 
-            allKeypoints[lvl] = levelKpts;
+            allkpts[lvl] = levelKpts;
 
-            for (auto &kpt : allKeypoints[lvl])
+            for (auto &kpt : allkpts[lvl])
             {
                 kpt.pt.y += minimumY;
                 kpt.pt.x += minimumX;
                 kpt.octave = lvl;
-                //kpt.angle = IntensityCentroidAngle(&mvImagePyramid[lvl].at<uchar>(
-                //        myRound(kpt.pt.x), myRound(kpt.pt.y)), mvImagePyramid[lvl].step1());
+                //kpt.angle = IntensityCentroidAngle(&imagePyramid[lvl].at<uchar>(
+                //        myRound(kpt.pt.x), myRound(kpt.pt.y)), imagePyramid[lvl].step1());
             }
         }
     }
@@ -699,11 +699,7 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allKeyp
                     if (endX > maximumX)
                         endX = maximumX;
 
-                    //cv::Range colSelect(startX, endX);
-                    //cv::Range rowSelect(startY, endY);
-                    //cv::Mat patch = mvImagePyramid[lvl](rowSelect, colSelect);
                     std::vector<cv::KeyPoint> patchKpts;
-
 
                     this->FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
                             patchKpts, iniThFAST, lvl);
@@ -731,24 +727,47 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allKeyp
                 }
             }
 
-            allKeypoints[lvl].reserve(nfeatures);
+            allkpts[lvl].reserve(nfeatures);
+
+            if (distributePerLevel)
+                Distribution::DistributeKeypoints(levelKpts, minimumX, maximumX, minimumY, maximumY,
+                                                  nfeaturesPerLevelVec[lvl], mode);
 
 
-            DistributeKeypoints(levelKpts, minimumX, maximumX, minimumY, maximumY, nfeaturesPerLevelVec[lvl], mode);
-
-
-            allKeypoints[lvl] = levelKpts;
+            allkpts[lvl] = levelKpts;
 
 
 
-            for (auto &kpt : allKeypoints[lvl])
+            for (auto &kpt : allkpts[lvl])
             {
                 kpt.pt.y += minimumY;
                 kpt.pt.x += minimumX;
                 kpt.octave = lvl;
-                //kpt.angle = IntensityCentroidAngle(&mvImagePyramid[lvl].at<uchar>(
-                //        myRound(kpt.pt.x), myRound(kpt.pt.y)), mvImagePyramid[lvl].step1());
+                //kpt.angle = IntensityCentroidAngle(&imagePyramid[lvl].at<uchar>(
+                //        myRound(kpt.pt.x), myRound(kpt.pt.y)), imagePyramid[lvl].step1());
             }
+        }
+    }
+    if (!distributePerLevel)
+    {
+        int nkpts = 0;
+        for (int lvl = 0; lvl < nlevels; ++lvl)
+        {
+            nkpts += allkpts[lvl].size();
+        }
+        std::vector<cv::KeyPoint> temp(nkpts);
+        for (int lvl = 0; lvl < nlevels; ++lvl)
+        {
+            temp.insert(temp.end(), allkpts[lvl].begin(), allkpts[lvl].end());
+        }
+        Distribution::DistributeKeypoints(temp, 0, mvImagePyramid[0].cols, 0, mvImagePyramid[0].rows, nfeatures, mode);
+
+        for (int lvl = 0; lvl < nlevels; ++lvl)
+            allkpts[lvl].clear();
+
+        for (auto &kpt : temp)
+        {
+            allkpts[kpt.octave].emplace_back(kpt);
         }
     }
 }

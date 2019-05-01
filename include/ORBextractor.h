@@ -33,7 +33,7 @@ public:
 
     void operator()(cv::InputArray inputImage, cv::InputArray mask,
                     std::vector<cv::KeyPoint> &resultKeypoints, cv::OutputArray outputDescriptors,
-                    DistributionMethod distributionMode);
+                    Distribution::DistributionMethod distributionMode, bool distributePerLevel = true);
 
     int inline GetLevels(){
         return nlevels;}
@@ -77,7 +77,8 @@ protected:
     void ComputeScalePyramid(cv::Mat &image);
 
     void DivideAndFAST(std::vector<std::vector<cv::KeyPoint> >& allKeypoints,
-                       DistributionMethod mode = DISTRIBUTION_NAIVE, bool divideImage = true, int cellSize = 30);
+                       Distribution::DistributionMethod mode = Distribution::QUADTREE,
+                       bool divideImage = true, int cellSize = 30, bool distributePerLevel = true);
 
     void FAST(cv::Mat image, std::vector<cv::KeyPoint> &keypoints, int &threshold, int level = 0);
 

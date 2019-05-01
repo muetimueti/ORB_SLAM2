@@ -1,3 +1,6 @@
+#ifndef ORBEXTRACTOR_DISTRIBUTION_H
+#define ORBEXTRACTOR_DISTRIBUTION_H
+
 #include <vector>
 #include <opencv2/core/core.hpp>
 #include <list>
@@ -15,33 +18,39 @@ public:
     bool leaf;
 };
 
-enum DistributionMethod
+class Distribution
 {
-DISTRIBUTION_NAIVE,
-DISTRIBUTION_QUADTREE,
-DISTRIBUTION_QUADTREE_ORBSLAMSTYLE,
-DISTRIBUTION_GRID,
-DISTRIBUTION_ANMS_KDTREE,
-DISTRIBUTION_ANMS_RT,
-DISTRIBUTION_SSC,
-DISTRIBUTION_KEEP_ALL
+public:
+
+    enum DistributionMethod
+    {
+    NAIVE,
+    QUADTREE,
+    QUADTREE_ORBSLAMSTYLE,
+    GRID,
+    ANMS_KDTREE,
+    ANMS_RT,
+    SSC,
+    KEEP_ALL
+    };
+
+    static void DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int &minX, const int &maxX, const int &minY,
+                                    const int &maxY, const int &N, DistributionMethod mode);
+
+protected:
+
+    static void DistributeKeypointsNaive(std::vector<cv::KeyPoint> &kpts, const int &N);
+
+    static void DistributeKeypointsQuadTree(std::vector<cv::KeyPoint>& kpts, const int &minX,
+                                            const int &maxX, const int &minY, const int &maxY, const int &N);
+
+    static void DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyPoint>& kpts, const int &minX,
+                                                         const int &maxX, const int &minY, const int &maxY, const int &N);
+
+    static void DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, const int &minX,
+                                        const int &maxX, const int &minY, const int &maxY, const int &N);
+
 };
-
-
-
-void DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int &minX, const int &maxX, const int &minY,
-                         const int &maxY, const int &N, DistributionMethod mode);
-
-void DistributeKeypointsNaive(std::vector<cv::KeyPoint> &kpts, const int &N);
-
-void DistributeKeypointsQuadTree(std::vector<cv::KeyPoint>& kpts, const int &minX,
-                                 const int &maxX, const int &minY, const int &maxY, const int &N);
-
-void DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyPoint>& kpts, const int &minX,
-                                              const int &maxX, const int &minY, const int &maxY, const int &N);
-
-void DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, const int &minX,
-                             const int &maxX, const int &minY, const int &maxY, const int &N);
 
 CV_INLINE  int myRound( float value )
 {
@@ -52,3 +61,5 @@ CV_INLINE  int myRound( float value )
       return (int)(value + (value >= 0 ? 0.5f : -0.5f));
 #endif
 }
+
+#endif

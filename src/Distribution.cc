@@ -9,62 +9,50 @@
 #include <iostream>
 
 
-static bool CompareVectorSize(const ExtractorNode *n1, const ExtractorNode *n2)
-{
-    return (n1->nodeKpts.size() > n2->nodeKpts.size());
-}
-struct CompareVecSz
-{
-bool operator()(const ExtractorNode *n1, const ExtractorNode *n2) const
-{
-    return (n1->nodeKpts.size() > n2->nodeKpts.size());
-}
-};
 
-static bool ResponseComparison(const cv::KeyPoint &k1, const cv::KeyPoint &k2)
-{
-    return (k1.response > k2.response);
-}
-struct CompareResponse {
+struct ResponseGreater {
 bool operator()(const cv::KeyPoint &k1, const cv::KeyPoint &k2) const
 {
     return k1.response > k2.response;
 }
 };
+
 static void RetainBestN(std::vector<cv::KeyPoint> &kpts, int N)
 {
-    std::sort(kpts.begin(), kpts.end(), CompareResponse());
+    if (kpts.size() <= N)
+        return;
+    std::nth_element(kpts.begin(), kpts.begin()+N, kpts.end(), ResponseGreater());
     kpts.resize(N);
 }
 
 
 void
-DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int &minX, const int &maxX, const int &minY,
-                    const int &maxY, const int &N, DistributionMethod mode)
+Distribution::DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int &minX, const int &maxX, const int &minY,
+                                  const int &maxY, const int &N, DistributionMethod mode)
 {
     switch (mode)
     {
-        case DISTRIBUTION_NAIVE :
+        case NAIVE :
         {
             DistributeKeypointsNaive(kpts, N);
             break;
         }
-        case DISTRIBUTION_QUADTREE :
+        case QUADTREE :
         {
             DistributeKeypointsQuadTree(kpts, minX, maxX, minY, maxY, N);
             break;
         }
-        case DISTRIBUTION_QUADTREE_ORBSLAMSTYLE :
+        case QUADTREE_ORBSLAMSTYLE :
         {
             DistributeKeypointsQuadTree_ORBSLAMSTYLE(kpts, minX, maxX, minY, maxY, N);
             break;
         }
-        case DISTRIBUTION_GRID :
+        case GRID :
         {
             DistributeKeypointsGrid(kpts, minX, maxX, minY, maxY, N);
             break;
         }
-        case DISTRIBUTION_KEEP_ALL :
+        case KEEP_ALL :
         {
             break;
         }
@@ -80,14 +68,14 @@ DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int &minX, const int 
 
 
 
-void DistributeKeypointsNaive(std::vector<cv::KeyPoint> &kpts, const int &N)
+void Distribution::DistributeKeypointsNaive(std::vector<cv::KeyPoint> &kpts, const int &N)
 {
     RetainBestN(kpts, N);
 }
 
 
-void DistributeKeypointsQuadTree(std::vector<cv::KeyPoint>& kpts, const int &minX,
-                                 const int &maxX, const int &minY, const int &maxY, const int &N)
+void Distribution::DistributeKeypointsQuadTree(std::vector<cv::KeyPoint>& kpts, const int &minX,
+                                               const int &maxX, const int &minY, const int &maxY, const int &N)
 {
     assert(!kpts.empty());
 
@@ -186,27 +174,49 @@ void DistributeKeypointsQuadTree(std::vector<cv::KeyPoint>& kpts, const int &min
             }
         }
     }
-
     std::vector<cv::KeyPoint> resKpts;
     resKpts.reserve(N);
-    auto iter = nodesList.begin();
-    for (int i = 0; i < N&& iter != nodesList.end(); ++i, ++iter)
-    {
-        if (!iter->leaf)
-            RetainBestN(iter->nodeKpts, 1);
 
-        resKpts.emplace_back(iter->nodeKpts[0]);
+    auto iter = nodesList.begin();
+    for (; iter != nodesList.end(); ++iter)
+    {
+        std::vector<cv::KeyPoint> &nodekpts = iter->nodeKpts;
+        cv::KeyPoint* kpt = &nodekpts[0];
+        if (iter->leaf)
+        {
+            resKpts.emplace_back(*kpt);
+            continue;
+        }
+
+        float maxScore = kpt->response;
+        for (auto &k : nodekpts)
+        {
+            if (k.response > maxScore)
+            {
+                kpt = &k;
+                maxScore = k.response;
+            }
+
+        }
+        resKpts.emplace_back(*kpt);
     }
 
     kpts = resKpts;
 }
 
 
-void DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyPoint>& kpts, const int &minX,
-                                              const int &maxX, const int &minY, const int &maxY, const int &N)
+struct CompareVecSz
+{
+bool operator()(const ExtractorNode *n1, const ExtractorNode *n2) const
+{
+    return (n1->nodeKpts.size() > n2->nodeKpts.size());
+}
+};
+
+void Distribution::DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyPoint>& kpts, const int &minX,
+                                                            const int &maxX, const int &minY, const int &maxY, const int &N)
 {
     assert(!kpts.empty());
-
 
     const int nroots = round(static_cast<float>(maxX-minX)/(maxY-minY));
 
@@ -453,21 +463,24 @@ void DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyPoint>& kpts, c
  * @param minX, maxX, minY, maxY : relevant image dimensions
  * @param N : number of keypoints to retain
  */
-void DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, const int &minX, const int &maxX, const int &minY,
-                             const int &maxY, const int &N)
+void Distribution::DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, const int &minX, const int &maxX,
+                                           const int &minY, const int &maxY, const int &N)
 {
-    const float width = maxX - minX;
-    const float height = maxY - minY;
+    const int width = maxX - minX;
+    const int height = maxY - minY;
 
-    const float ratio = height / width;
-    const int cells = N / 10;
-
-    const int cellCols = cells;
-    const int cellRows = cells * ratio;
+    int cellCols = 6;
+    int cellRows = 6;
+    if (width > height)
+        cellCols *= (int)((float)width / (float)height);
+    else
+        cellRows *= (int)((float)height / (float)width);
     const int cellWidth = std::ceil(width / cellCols);
     const int cellHeight = std::ceil(height / cellRows);
 
     const int nCells = cellCols * cellRows;
+    int nPerCell = (int)((float)N / nCells);
+
     std::vector<std::vector<cv::KeyPoint>> cellkpts(nCells);
 
     for (auto &kptVec : cellkpts)
@@ -481,7 +494,6 @@ void DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, const int &minX, c
         cellkpts[idx].emplace_back(kpt);
     }
 
-    const int nPerCell = std::ceil((float)N / nCells);
     kpts.clear();
     kpts.reserve(N);
 
