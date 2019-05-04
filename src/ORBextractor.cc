@@ -413,7 +413,10 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
 
 
     std::vector<std::vector<cv::KeyPoint>> allKpts;
-    DivideAndFAST(allKpts, Distribution::GRID, true);
+
+    ///CHANGE DISTRIBUTION METHOD HERE
+    DivideAndFAST(allKpts, Distribution::SSC, true, 30, false);
+    //////////////////////////////////
 
     ComputeAngles(allKpts);
 
