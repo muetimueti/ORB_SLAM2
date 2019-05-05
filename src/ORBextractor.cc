@@ -2,6 +2,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <chrono>
+#include <unistd.h>
 #include "include/ORBextractor.h"
 
 
@@ -393,69 +395,8 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
 void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
                               std::vector<cv::KeyPoint> &resultKeypoints, cv::OutputArray outputDescriptors)
 {
-    if (inputImage.empty())
-        return;
-
-    cv::Mat image = inputImage.getMat();
-    assert(image.type() == CV_8UC1);
-
-    ComputeScalePyramid(image);
-
-
-    for (int lvl = 0; lvl < nlevels; ++lvl)
-    {
-        for (int i = 0; i < CIRCLE_SIZE; ++i)
-        {
-            pixelOffset[lvl*CIRCLE_SIZE + i] =
-                    CIRCLE_OFFSETS[i][0] + CIRCLE_OFFSETS[i][1] * (int)mvImagePyramid[lvl].step1();
-        }
-    }
-
-
-    std::vector<std::vector<cv::KeyPoint>> allKpts;
-
-    ///CHANGE DISTRIBUTION METHOD HERE
-    DivideAndFAST(allKpts, Distribution::SSC, true, 30, false);
-    //////////////////////////////////
-
-    ComputeAngles(allKpts);
-
-    cv::Mat BRIEFdescriptors;
-    int nkpts = 0;
-    for (int lvl = 0; lvl < nlevels; ++lvl)
-    {
-        nkpts += (int)allKpts[lvl].size();
-    }
-    if (nkpts <= 0)
-    {
-        outputDescriptors.release();
-    } else
-    {
-        outputDescriptors.create(nkpts, 32, CV_8U);
-        BRIEFdescriptors = outputDescriptors.getMat();
-    }
-
-    resultKeypoints.clear();
-    resultKeypoints.reserve(nkpts);
-
-    ComputeDescriptors(allKpts, BRIEFdescriptors);
-
-    for (int lvl = 0; lvl < nlevels; ++lvl)
-    {
-        int size = PATCH_SIZE * mvScaleFactor[lvl];
-        float scale = mvScaleFactor[lvl];
-        for (auto &kpt : allKpts[lvl])
-        {
-            kpt.size = size;
-            if (lvl)
-                kpt.pt *= scale;
-        }
-    }
-
-    for (int lvl = 0; lvl < nlevels; ++lvl)
-    {
-        resultKeypoints.insert(resultKeypoints.end(), allKpts[lvl].begin(), allKpts[lvl].end());
-    }
+    /// CHANGE DISTRIBUTION METHOD WITH LAST TWO ARGS!
+    this->operator()(inputImage, mask, resultKeypoints, outputDescriptors, Distribution::SSC, false);
 }
 
 /** @overload
@@ -464,12 +405,15 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
  * @param resultKeypoints keypoint vector in which results will be stored
  * @param outputDescriptors matrix in which descriptors will be stored
  * @param distributionMode decides the method to call for kpt-distribution, see Distribution.h
+ * @param distributePerLevel true->distribute kpts per octave, false->distribute kpts per image
  */
 
 void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
                               std::vector<cv::KeyPoint> &resultKeypoints, cv::OutputArray outputDescriptors,
                               Distribution::DistributionMethod distributionMode, bool distributePerLevel)
 {
+    std::chrono::high_resolution_clock::time_point funcEntry = std::chrono::high_resolution_clock::now();
+
     if (inputImage.empty())
         return;
 
@@ -526,7 +470,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
 
     for (int lvl = 0; lvl < nlevels; ++lvl)
     {
-        int size = PATCH_SIZE * mvScaleFactor[lvl];
+        float size = PATCH_SIZE * mvScaleFactor[lvl];
         float scale = mvScaleFactor[lvl];
         for (auto &kpt : allkpts[lvl])
         {
@@ -539,6 +483,18 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
     for (int lvl = 0; lvl < nlevels; ++lvl)
     {
         resultKeypoints.insert(resultKeypoints.end(), allkpts[lvl].begin(), allkpts[lvl].end());
+    }
+
+    //TODO: de-/activate fixed duration
+    //ensure feature detection always takes 50ms
+    unsigned long maxDuration = 50000;
+    std::chrono::high_resolution_clock::time_point funcExit = std::chrono::high_resolution_clock::now();
+    auto funcDuration = std::chrono::duration_cast<std::chrono::microseconds>(funcExit-funcEntry).count();
+    //assert(funcDuration <= maxDuration);
+    if (funcDuration < maxDuration)
+    {
+        auto sleeptime = maxDuration - funcDuration;
+        usleep(sleeptime);
     }
 }
 
@@ -610,6 +566,7 @@ void ORBextractor::ComputeDescriptors(std::vector<std::vector<cv::KeyPoint>> &al
  * @param mode decides which method to call for keypoint distribution over image, see Distribution.h
  * @param divideImage  true-->divide image into cellSize x cellSize cells, run FAST per cell
  * @param cellSize must be greater than 16 and lesser than min(rows, cols) of smallest image in pyramid
+ * @param distributePerLevel distribute keypoints per level or per image after levels are merged
  */
 void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts,
         Distribution::DistributionMethod mode, bool divideImage, int cellSize, bool distributePerLevel)

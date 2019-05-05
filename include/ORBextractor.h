@@ -78,7 +78,7 @@ protected:
 
     void DivideAndFAST(std::vector<std::vector<cv::KeyPoint> >& allKeypoints,
                        Distribution::DistributionMethod mode = Distribution::QUADTREE,
-                       bool divideImage = true, int cellSize = 30, bool distributePerLevel = true);
+                       bool divideImage = true, int cellSize = 30, bool distributePerLevel = false);
 
     void FAST(cv::Mat image, std::vector<cv::KeyPoint> &keypoints, int &threshold, int level = 0);
 

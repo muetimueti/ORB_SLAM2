@@ -33,6 +33,8 @@ void
 Distribution::DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int minX, const int maxX, const int minY,
                                   const int maxY, const int N, DistributionMethod mode)
 {
+    if (kpts.size() <= N)
+        return;
     const float epsilon = 0.1;
     if (mode == ANMS_RT || mode == ANMS_KDTREE || mode == SSC)
     {
@@ -749,15 +751,16 @@ void Distribution::DistributeKeypointsRT_ANMS(std::vector<cv::KeyPoint> &kpts, i
 
 void Distribution::DistributeKeypointsSSC(std::vector<cv::KeyPoint> &kpts, int rows, int cols, int N, float epsilon)
 {
-    int exp1 = rows + cols + 2*N;
-    long long exp2 = ((long long) 4*cols + (long long)4*N + (long long)4*rows*N + (long long)rows*rows + (long long) cols*cols - (long long)2*rows*cols + (long long)4*rows*cols*N);
-    double exp3 = sqrt(exp2);
-    double exp4 = (2*(N - 1));
+    int numerator1 = rows + cols + 2*N;
+    long long discriminant = (long long)4*cols + (long long)4*N + (long long)4*rows*N +
+            (long long)rows*rows + (long long)cols*cols - (long long)2*cols*rows + (long long)4*cols*rows*N;
 
-    double sol1 = -round((exp1+exp3)/exp4); // first solution
-    double sol2 = -round((exp1-exp3)/exp4); // second solution
+    double denominator = 2*(N-1);
 
-    int high = (sol1>sol2)? sol1 : sol2; //binary search range initialization with positive solution
+    double sol1 = (numerator1 - sqrt(discriminant))/denominator;
+    double sol2 = (numerator1 + sqrt(discriminant))/denominator;
+
+    int high = (sol1>sol2)? sol1 : sol2;
     int low = floor(sqrt((double)kpts.size()/N));
 
     bool done = false;
@@ -778,9 +781,7 @@ void Distribution::DistributeKeypointsSSC(std::vector<cv::KeyPoint> &kpts, int r
         }
         tempResult.clear();
 
-        //TODO: fix
-
-        double c = width/2;
+        double c = (double)width/2.0;
         int cellCols = floor(cols/c);
         int cellRows = floor(rows/c);
         std::vector<std::vector<bool>> covered(cellRows+1, std::vector<bool>(cellCols+1, false));
