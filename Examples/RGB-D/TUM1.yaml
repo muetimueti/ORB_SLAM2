@@ -54,13 +54,19 @@ ORBextractor.nLevels: 8
 ORBextractor.iniThFAST: 20
 ORBextractor.minThFAST: 7
 
+#ORB Extractor: Keypoint distribution
+# Select between various good and not-so-good methods for distributing Keypoints:
+# 0=TopN, 1=Quadtree, 2=Quadtree (Orbslam), 3=Bucketing, 4=ANMS via KDTree, 5=ANMS via Range Tree,
+# 6=Suppresion via Square Covering (SSC), 7=Keep all Keypoints (not recommended)
+ORBextractor.distribution: 3
+
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters
 #--------------------------------------------------------------------------------------------
 Viewer.KeyFrameSize: 0.05
 Viewer.KeyFrameLineWidth: 1
 Viewer.GraphLineWidth: 0.9
-Viewer.PointSize:2
+Viewer.PointSize: 2
 Viewer.CameraSize: 0.08
 Viewer.CameraLineWidth: 3
 Viewer.ViewpointX: 0

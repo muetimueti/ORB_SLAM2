@@ -57,11 +57,14 @@ public:
         return mvInvLevelSigma2;
     }
 
-    std::vector<cv::Mat> mvImagePyramid;
-
     void inline SetDistribution(Distribution::DistributionMethod mode)
     {
         kptDistribution = mode;
+    }
+
+    void inline SetDistribution(int mode)
+    {
+        kptDistribution = static_cast<Distribution::DistributionMethod>(mode);
     }
 
     Distribution::DistributionMethod inline GetDistribution()
@@ -72,6 +75,8 @@ public:
     void SetnFeatures(int n);
 
     void SetFASTThresholds(int ini, int min);
+
+    std::vector<cv::Mat> mvImagePyramid;
 
 protected:
 
@@ -95,7 +100,7 @@ protected:
 
     void FAST(cv::Mat image, std::vector<cv::KeyPoint> &keypoints, int &threshold, int level = 0);
 
-    int OptimizedCornerScore(const uchar *pointer, const int offset[], int &threshold);
+    int CornerScore(const uchar *pointer, const int offset[], int &threshold);
 
     void ComputeAngles(std::vector<std::vector<cv::KeyPoint>> &allkpts);
 
@@ -106,8 +111,6 @@ protected:
 
     //inline float getScale(int lvl);
 
-    Distribution::DistributionMethod kptDistribution;
-
     int continuousPixelsRequired;
     int onePointFiveCircles;
 
@@ -116,6 +119,8 @@ protected:
     int nlevels;
     int iniThFAST;
     int minThFAST;
+
+    Distribution::DistributionMethod kptDistribution;
 
 
     uchar threshold_tab_min[512];

@@ -25,6 +25,7 @@
 #include<chrono>
 #include <sys/stat.h>
 #include <sstream>
+#include "include/Distribution.h"
 
 #include<opencv2/core/core.hpp>
 
@@ -121,8 +122,10 @@ int main(int argc, char **argv)
             usleep((T-ttrack)*1e6);
     }
 
-    Distribution::DistributionMethod d = SLAM.GetTracker()->GetLeftExtractor()->GetDistribution();
+    Distribution::DistributionMethod d;
+    d = SLAM.GetTracker()->GetLeftExtractor()->GetDistribution();
     string distributionName = GetDistributionName(d);
+
     // Stop all threads
     SLAM.Shutdown();
 
@@ -150,8 +153,10 @@ int main(int argc, char **argv)
     struct stat buf{};
     for (int i = 1; i< 5000; ++i)
     {
+        ssC.str(string());
+        ssK.str(string());
         ssC << "trajectories/" << name << "_" << distributionName << "_" << to_string(i) << "-Cameratrajectory.txt";
-        ssK << "trajectories" << name << "_" << distributionName << "_" << to_string(i) << "-Keyframetrajectory.txt";
+        ssK << "trajectories/" << name << "_" << distributionName << "_" << to_string(i) << "-Keyframetrajectory.txt";
         string sC = ssC.str();
         string sK = ssK.str();
         bool ex = (stat(sC.c_str(), &buf) == 0);
@@ -202,19 +207,19 @@ string GetDistributionName(Distribution::DistributionMethod d)
     switch(d)
     {
         case (distr::KEEP_ALL):
-            return string("all keypoints");
+            return string("all_kept");
         case (distr::NAIVE):
-            return string("top N");
+            return string("topN");
         case (distr::QUADTREE):
-            return string("simple quadtree");
+            return string("quadtree");
         case (distr::QUADTREE_ORBSLAMSTYLE):
-            return string("orbslam quadtree");
+            return string("quadtree_os");
         case (distr::GRID):
             return string("bucketing");
         case (distr::ANMS_KDTREE):
-            return string("KDTree ANMS");
+            return string("KDT-ANMS");
         case (distr::ANMS_RT):
-            return string("Range Tree ANMS");
+            return string("RT-ANMS");
         case (distr::SSC):
             return string("SSC");
         default:

@@ -24,14 +24,14 @@ public:
 
     enum DistributionMethod
     {
-    NAIVE,
-    QUADTREE,
-    QUADTREE_ORBSLAMSTYLE,
-    GRID,
-    ANMS_KDTREE,
-    ANMS_RT,
-    SSC,
-    KEEP_ALL
+    NAIVE = 0,
+    QUADTREE = 1,
+    QUADTREE_ORBSLAMSTYLE = 2,
+    GRID = 3,
+    ANMS_KDTREE = 4,
+    ANMS_RT = 5,
+    SSC = 6,
+    KEEP_ALL = 7
     };
 
     static void DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, int minX, int maxX, int minY,

@@ -44,10 +44,9 @@ float ORBextractor::IntensityCentroidAngle(const uchar* pointer, int step)
 
 
 ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
-                           int _iniThFAST, int _minThFAST):
-        nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels),
-        iniThFAST(_iniThFAST), minThFAST(_minThFAST), threshold_tab_min{}, threshold_tab_init{}, pixelOffset{}
-
+                               int _iniThFAST, int _minThFAST):
+            nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels),
+            iniThFAST(_iniThFAST), minThFAST(_minThFAST), threshold_tab_min{}, threshold_tab_init{}, pixelOffset{}
 {
 
     mvScaleFactor.resize(nlevels);
@@ -61,6 +60,8 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
     continuousPixelsRequired = CIRCLE_SIZE / 2;
     onePointFiveCircles = CIRCLE_SIZE + continuousPixelsRequired + 1;
 
+    kptDistribution = Distribution::SSC;
+
     iniThFAST = std::min(255, std::max(0, iniThFAST));
     minThFAST = std::min(iniThFAST, std::max(0, minThFAST));
 
@@ -73,18 +74,21 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
         {
             threshold_tab_init[i] = (uchar)1;
             threshold_tab_min[i] = (uchar)1;
-        } else if (v > iniThFAST)
+        }
+        else if (v > iniThFAST)
         {
             threshold_tab_init[i] = (uchar)2;
             threshold_tab_min[i] = (uchar)2;
 
-        } else
+        }
+        else
         {
             threshold_tab_init[i] = (uchar)0;
             if (v < -minThFAST)
             {
                 threshold_tab_min[i] = (uchar)1;
-            } else if (v > minThFAST)
+            }
+            else if (v > minThFAST)
             {
                 threshold_tab_min[i] = (uchar)2;
             } else
@@ -121,6 +125,67 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
     std::copy(tempPattern, tempPattern+nPoints, std::back_inserter(pattern));
 }
 
+void ORBextractor::SetnFeatures(int n)
+{
+    //do nothing if unreasonable values are submitted
+    if (n < 1 || n > 10000)
+        return;
+
+    nfeatures = n;
+
+    float fac = 1.f / scaleFactor;
+    float nDesiredFeaturesPerScale = nfeatures * (1.f - fac) / (1.f - (float) pow((double) fac, (double) nlevels));
+
+    int sumFeatures = 0;
+    for (int i = 0; i < nlevels - 1; ++i)
+    {
+        nfeaturesPerLevelVec[i] = myRound(nDesiredFeaturesPerScale);
+        sumFeatures += nfeaturesPerLevelVec[i];
+        nDesiredFeaturesPerScale *= fac;
+    }
+    nfeaturesPerLevelVec[nlevels-1] = std::max(nfeatures - sumFeatures, 0);
+}
+
+void ORBextractor::SetFASTThresholds(int ini, int min)
+{
+    if ((ini == iniThFAST && min == minThFAST) || ini < 2 || min < 1 || ini > 250 || min > 249)
+        return;
+
+    iniThFAST = std::min(255, std::max(0, ini));
+    minThFAST = std::min(iniThFAST, std::max(0, min));
+
+    //initialize threshold tabs for init and min threshold
+    int i;
+    for (i = 0; i < 512; ++i)
+    {
+        int v = i - 255;
+        if (v < -iniThFAST)
+        {
+            threshold_tab_init[i] = (uchar)1;
+            threshold_tab_min[i] = (uchar)1;
+        }
+        else if (v > iniThFAST)
+        {
+            threshold_tab_init[i] = (uchar)2;
+            threshold_tab_min[i] = (uchar)2;
+        }
+        else
+        {
+            threshold_tab_init[i] = (uchar)0;
+            if (v < -minThFAST)
+            {
+                threshold_tab_min[i] = (uchar)1;
+            }
+            else if (v > minThFAST)
+            {
+                threshold_tab_min[i] = (uchar)2;
+            }
+            else
+                threshold_tab_min[i] = (uchar)0;
+        }
+    }
+}
+
 
 void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
                               std::vector<cv::KeyPoint> &resultKeypoints, cv::OutputArray outputDescriptors)
@@ -142,6 +207,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
                               std::vector<cv::KeyPoint> &resultKeypoints, cv::OutputArray outputDescriptors,
                               Distribution::DistributionMethod distributionMode, bool distributePerLevel)
 {
+    //distributionMode ignored at the moment, set in constructor instead
     std::chrono::high_resolution_clock::time_point funcEntry = std::chrono::high_resolution_clock::now();
 
     if (inputImage.empty())
@@ -168,7 +234,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
     //using namespace std::chrono;
     //high_resolution_clock::time_point t1 = high_resolution_clock::now();
 
-    DivideAndFAST(allkpts, distributionMode, true, 30, distributePerLevel);
+    DivideAndFAST(allkpts, kptDistribution, true, 30, distributePerLevel);
 
 
     ComputeAngles(allkpts);
@@ -341,8 +407,8 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
                 kpt.pt.y += minimumY;
                 kpt.pt.x += minimumX;
                 kpt.octave = lvl;
-                //kpt.angle = IntensityCentroidAngle(&imagePyramid[lvl].at<uchar>(
-                //        myRound(kpt.pt.x), myRound(kpt.pt.y)), imagePyramid[lvl].step1());
+                //kpt.angle = IntensityCentroidAngle(&mvImagePyramid[lvl].at<uchar>(
+                //        myRound(kpt.pt.x), myRound(kpt.pt.y)), mvImagePyramid[lvl].step1());
             }
         }
     }
@@ -433,8 +499,8 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
                 kpt.pt.y += minimumY;
                 kpt.pt.x += minimumX;
                 kpt.octave = lvl;
-                //kpt.angle = IntensityCentroidAngle(&imagePyramid[lvl].at<uchar>(
-                //        myRound(kpt.pt.x), myRound(kpt.pt.y)), imagePyramid[lvl].step1());
+                //kpt.angle = IntensityCentroidAngle(&mvImagePyramid[lvl].at<uchar>(
+                //        myRound(kpt.pt.x), myRound(kpt.pt.y)), mvImagePyramid[lvl].step1());
             }
         }
     }
@@ -571,7 +637,7 @@ void ORBextractor::FAST(cv::Mat img, std::vector<cv::KeyPoint> &keypoints, int &
                             {
                                 currRowPos[ncandidates++] = j;
 
-                                currRowScores[j] = OptimizedCornerScore(pointer, offset, threshold);
+                                currRowScores[j] = CornerScore(pointer, offset, threshold);
                                 break;
                             }
                         } else
@@ -594,7 +660,7 @@ void ORBextractor::FAST(cv::Mat img, std::vector<cv::KeyPoint> &keypoints, int &
                             {
                                 currRowPos[ncandidates++] = j;
 
-                                currRowScores[j] = OptimizedCornerScore(pointer, offset, threshold);
+                                currRowScores[j] = CornerScore(pointer, offset, threshold);
                                 break;
                             }
                         } else
@@ -625,7 +691,7 @@ void ORBextractor::FAST(cv::Mat img, std::vector<cv::KeyPoint> &keypoints, int &
 }
 
 
-int ORBextractor::OptimizedCornerScore(const uchar* pointer, const int offset[], int &threshold)
+int ORBextractor::CornerScore(const uchar* pointer, const int offset[], int &threshold)
 {
     int val = pointer[0];
     int i;
