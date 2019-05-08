@@ -1587,6 +1587,9 @@ void Tracking::InformOnlyTracking(const bool &flag)
     mbOnlyTracking = flag;
 }
 
-
+ORBextractor* Tracking::GetLeftExtractor()
+{
+    return mpORBextractorLeft;
+}
 
 } //namespace ORB_SLAM

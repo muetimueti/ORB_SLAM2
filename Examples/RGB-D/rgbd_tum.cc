@@ -23,6 +23,8 @@
 #include<algorithm>
 #include<fstream>
 #include<chrono>
+#include <sys/stat.h>
+#include <sstream>
 
 #include<opencv2/core/core.hpp>
 
@@ -32,6 +34,7 @@ using namespace std;
 
 void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
                 vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
+string GetDistributionName(Distribution::DistributionMethod d);
 
 int main(int argc, char **argv)
 {
@@ -118,6 +121,8 @@ int main(int argc, char **argv)
             usleep((T-ttrack)*1e6);
     }
 
+    Distribution::DistributionMethod d = SLAM.GetTracker()->GetLeftExtractor()->GetDistribution();
+    string distributionName = GetDistributionName(d);
     // Stop all threads
     SLAM.Shutdown();
 
@@ -133,8 +138,33 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    SLAM.SaveTrajectoryTUM("CameraTrajectory.txt");
-    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");   
+    string name;
+    string delim = "/";
+    name = string(argv[3]);
+    int n = name.rfind(delim, name.length()-2);
+    cout << "\n" << name;
+    name = name.substr(n+1, name.length()-n-2);
+
+    stringstream ssC, ssK;
+
+    struct stat buf{};
+    for (int i = 1; i< 5000; ++i)
+    {
+        ssC << "trajectories/" << name << "_" << distributionName << "_" << to_string(i) << "-Cameratrajectory.txt";
+        ssK << "trajectories" << name << "_" << distributionName << "_" << to_string(i) << "-Keyframetrajectory.txt";
+        string sC = ssC.str();
+        string sK = ssK.str();
+        bool ex = (stat(sC.c_str(), &buf) == 0);
+        if (!ex)
+        {
+            SLAM.SaveTrajectoryTUM(sC);
+            SLAM.SaveKeyFrameTrajectoryTUM(sK);
+            break;
+        }
+        if (i == 4999)
+            cerr << "\nToo many trajectory files, would rather not write another one\n";
+    }
+
 
     return 0;
 }
@@ -163,5 +193,31 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
             vstrImageFilenamesD.push_back(sD);
 
         }
+    }
+}
+
+string GetDistributionName(Distribution::DistributionMethod d)
+{
+    typedef Distribution::DistributionMethod distr;
+    switch(d)
+    {
+        case (distr::KEEP_ALL):
+            return string("all keypoints");
+        case (distr::NAIVE):
+            return string("top N");
+        case (distr::QUADTREE):
+            return string("simple quadtree");
+        case (distr::QUADTREE_ORBSLAMSTYLE):
+            return string("orbslam quadtree");
+        case (distr::GRID):
+            return string("bucketing");
+        case (distr::ANMS_KDTREE):
+            return string("KDTree ANMS");
+        case (distr::ANMS_RT):
+            return string("Range Tree ANMS");
+        case (distr::SSC):
+            return string("SSC");
+        default:
+            return string("unknown");
     }
 }

@@ -46,6 +46,7 @@ Distribution::DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int min
         std::vector<cv::KeyPoint> keyPointsSorted;
         for (int i = 0; i < kpts.size(); i++)
             keyPointsSorted.emplace_back(kpts[idx[i]]);
+        kpts = keyPointsSorted;
     }
     switch (mode)
     {

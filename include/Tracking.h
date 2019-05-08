@@ -75,6 +75,8 @@ public:
     void InformOnlyTracking(const bool &flag);
 
 
+    ORBextractor *GetLeftExtractor();
+
 public:
 
     // Tracking states
@@ -114,6 +116,7 @@ public:
     bool mbOnlyTracking;
 
     void Reset();
+
 
 protected:
 

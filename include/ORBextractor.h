@@ -59,6 +59,19 @@ public:
 
     std::vector<cv::Mat> mvImagePyramid;
 
+    void inline SetDistribution(Distribution::DistributionMethod mode)
+    {
+        kptDistribution = mode;
+    }
+
+    Distribution::DistributionMethod inline GetDistribution()
+    {
+        return kptDistribution;
+    }
+
+    void SetnFeatures(int n);
+
+    void SetFASTThresholds(int ini, int min);
 
 protected:
 
@@ -93,6 +106,7 @@ protected:
 
     //inline float getScale(int lvl);
 
+    Distribution::DistributionMethod kptDistribution;
 
     int continuousPixelsRequired;
     int onePointFiveCircles;
