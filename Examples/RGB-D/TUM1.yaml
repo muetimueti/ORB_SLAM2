@@ -57,8 +57,13 @@ ORBextractor.minThFAST: 7
 #ORB Extractor: Keypoint distribution
 # Select between various good and not-so-good methods for distributing Keypoints:
 # 0=TopN, 1=Quadtree, 2=Quadtree (Orbslam), 3=Bucketing, 4=ANMS via KDTree, 5=ANMS via Range Tree,
-# 6=Suppresion via Square Covering (SSC), 7=Keep all Keypoints (not recommended)
-ORBextractor.distribution: 3
+# 6=Suppression via Square Covering (SSC), 7=Keep all Keypoints (not recommended)
+ORBextractor.distribution: 6
+
+#ORB Extractor: Set wehther to distribute keypoints per octave
+# If set to true(1), keypoints will be distributed per image octave
+# If set to false(0), the keypoint vector will be flattened first, then distributed
+ORBextractor.distributePerLevel: 1
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters

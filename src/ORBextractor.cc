@@ -43,10 +43,10 @@ float ORBextractor::IntensityCentroidAngle(const uchar* pointer, int step)
 
 
 
-ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
-                               int _iniThFAST, int _minThFAST):
-            nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels),
-            iniThFAST(_iniThFAST), minThFAST(_minThFAST), threshold_tab_min{}, threshold_tab_init{}, pixelOffset{}
+ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels, int _iniThFAST, int _minThFAST):
+    nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels), iniThFAST(0), minThFAST(0),
+    kptDistribution(Distribution::SSC), distributePerLevel(false), threshold_tab_min{}, threshold_tab_init{},
+    pixelOffset{}
 {
 
     mvScaleFactor.resize(nlevels);
@@ -60,46 +60,12 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
     continuousPixelsRequired = CIRCLE_SIZE / 2;
     onePointFiveCircles = CIRCLE_SIZE + continuousPixelsRequired + 1;
 
-    kptDistribution = Distribution::SSC;
-
-    iniThFAST = std::min(255, std::max(0, iniThFAST));
-    minThFAST = std::min(iniThFAST, std::max(0, minThFAST));
-
-    //initialize threshold tabs for init and min threshold
-    int i;
-    for (i = 0; i < 512; ++i)
-    {
-        int v = i - 255;
-        if (v < -iniThFAST)
-        {
-            threshold_tab_init[i] = (uchar)1;
-            threshold_tab_min[i] = (uchar)1;
-        }
-        else if (v > iniThFAST)
-        {
-            threshold_tab_init[i] = (uchar)2;
-            threshold_tab_min[i] = (uchar)2;
-
-        }
-        else
-        {
-            threshold_tab_init[i] = (uchar)0;
-            if (v < -minThFAST)
-            {
-                threshold_tab_min[i] = (uchar)1;
-            }
-            else if (v > minThFAST)
-            {
-                threshold_tab_min[i] = (uchar)2;
-            } else
-                threshold_tab_min[i] = (uchar)0;
-        }
-    }
+    SetFASTThresholds(_iniThFAST, _minThFAST);
 
     mvScaleFactor[0] = 1.f;
     mvInvScaleFactor[0] = 1.f;
 
-    for (i = 1; i < nlevels; ++i) {
+    for (int i = 1; i < nlevels; ++i) {
         mvScaleFactor[i] = scaleFactor * mvScaleFactor[i - 1];
         mvInvScaleFactor[i] = 1 / mvScaleFactor[i];
 
@@ -107,18 +73,7 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels,
         mvInvLevelSigma2[i] = 1.f / mvLevelSigma2[i];
     }
 
-
-    float fac = 1.f / scaleFactor;
-    float nDesiredFeaturesPerScale = nfeatures * (1.f - fac) / (1.f - (float) pow((double) fac, (double) nlevels));
-
-    int sumFeatures = 0;
-    for (i = 0; i < nlevels - 1; ++i)
-    {
-        nfeaturesPerLevelVec[i] = myRound(nDesiredFeaturesPerScale);
-        sumFeatures += nfeaturesPerLevelVec[i];
-        nDesiredFeaturesPerScale *= fac;
-    }
-    nfeaturesPerLevelVec[nlevels-1] = std::max(nfeatures - sumFeatures, 0);
+    SetnFeatures(_nfeatures);
 
     const int nPoints = 512;
     const auto tempPattern = (const cv::Point*) bit_pattern_31_;
@@ -190,8 +145,7 @@ void ORBextractor::SetFASTThresholds(int ini, int min)
 void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
                               std::vector<cv::KeyPoint> &resultKeypoints, cv::OutputArray outputDescriptors)
 {
-    /// CHANGE DISTRIBUTION METHOD WITH LAST TWO ARGS!
-    this->operator()(inputImage, mask, resultKeypoints, outputDescriptors, Distribution::QUADTREE_ORBSLAMSTYLE, false);
+    this->operator()(inputImage, mask, resultKeypoints, outputDescriptors, Distribution::QUADTREE_ORBSLAMSTYLE);
 }
 
 /** @overload
@@ -205,7 +159,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
 
 void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
                               std::vector<cv::KeyPoint> &resultKeypoints, cv::OutputArray outputDescriptors,
-                              Distribution::DistributionMethod distributionMode, bool distributePerLevel)
+                              Distribution::DistributionMethod distributionMode)
 {
     //distributionMode ignored at the moment, set in constructor instead
     std::chrono::high_resolution_clock::time_point funcEntry = std::chrono::high_resolution_clock::now();
@@ -282,11 +236,11 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
     }
 
     //TODO: de-/activate fixed duration
-    //ensure feature detection always takes 50ms
-    unsigned long maxDuration = 50000;
+    //ensure feature detection always takes x ms
+    unsigned long maxDuration = 100000;
     std::chrono::high_resolution_clock::time_point funcExit = std::chrono::high_resolution_clock::now();
     auto funcDuration = std::chrono::duration_cast<std::chrono::microseconds>(funcExit-funcEntry).count();
-    //assert(funcDuration <= maxDuration);
+    assert(funcDuration <= maxDuration);
     if (funcDuration < maxDuration)
     {
         auto sleeptime = maxDuration - funcDuration;

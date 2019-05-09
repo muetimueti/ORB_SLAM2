@@ -33,7 +33,7 @@ public:
 
     void operator()(cv::InputArray inputImage, cv::InputArray mask,
                     std::vector<cv::KeyPoint> &resultKeypoints, cv::OutputArray outputDescriptors,
-                    Distribution::DistributionMethod distributionMode, bool distributePerLevel = true);
+                    Distribution::DistributionMethod distributionMode);
 
     int inline GetLevels(){
         return nlevels;}
@@ -62,6 +62,8 @@ public:
         kptDistribution = mode;
     }
 
+    /**@overload
+     */
     void inline SetDistribution(int mode)
     {
         kptDistribution = static_cast<Distribution::DistributionMethod>(mode);
@@ -70,6 +72,16 @@ public:
     Distribution::DistributionMethod inline GetDistribution()
     {
         return kptDistribution;
+    }
+
+    bool inline AreKptsDistributedPerLevel()
+    {
+        return distributePerLevel;
+    }
+
+    void inline SetDistributionPerLevel(bool dpL)
+    {
+        distributePerLevel = dpL;
     }
 
     void SetnFeatures(int n);
@@ -121,6 +133,8 @@ protected:
     int minThFAST;
 
     Distribution::DistributionMethod kptDistribution;
+
+    bool distributePerLevel;
 
 
     uchar threshold_tab_min[512];
