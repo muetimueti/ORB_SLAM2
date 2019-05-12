@@ -106,13 +106,16 @@ protected:
 
     void ComputeScalePyramid(cv::Mat &image);
 
-    void DivideAndFAST(std::vector<std::vector<cv::KeyPoint> >& allKeypoints,
+    void DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allKeypoints,
                        Distribution::DistributionMethod mode = Distribution::QUADTREE,
                        bool divideImage = true, int cellSize = 30, bool distributePerLevel = false);
 
-    void FAST(cv::Mat image, std::vector<cv::KeyPoint> &keypoints, int &threshold, int level = 0);
+    template <typename T>
+    void FAST(cv::Mat image, std::vector<cv::KeyPoint> &keypoints, int threshold, int level = 0);
 
-    int CornerScore(const uchar *pointer, const int offset[], int &threshold);
+    int CornerScore(const uchar *pointer, const int offset[], int threshold);
+
+    float CornerScore_Harris(const uchar *ptr, int lvl);
 
     void ComputeAngles(std::vector<std::vector<cv::KeyPoint>> &allkpts);
 

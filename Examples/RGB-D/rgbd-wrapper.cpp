@@ -22,6 +22,9 @@ string GetDistributionName(Distribution::DistributionMethod d);
  * number of iterations
  * @return
  */
+
+int CallORB_SLAM2(char **argv);
+
 int main(int argc, char **argv)
 {
     if (argc != 6)
@@ -36,9 +39,12 @@ int main(int argc, char **argv)
     string settingspath = string(argv[2]);
 
     ifstream settingsfile;
+    //TODO: implement
+
+    CallORB_SLAM2(argv);
 }
 
-int CallORB_SLAM2(int argc, char **argv)
+int CallORB_SLAM2(char **argv)
 {
 
     // Retrieve paths to images
@@ -225,3 +231,5 @@ string GetDistributionName(Distribution::DistributionMethod d)
             return string("unknown");
     }
 }
+
+

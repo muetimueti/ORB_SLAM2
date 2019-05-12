@@ -240,7 +240,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
     unsigned long maxDuration = 100000;
     std::chrono::high_resolution_clock::time_point funcExit = std::chrono::high_resolution_clock::now();
     auto funcDuration = std::chrono::duration_cast<std::chrono::microseconds>(funcExit-funcEntry).count();
-    assert(funcDuration <= maxDuration);
+    //assert(funcDuration <= maxDuration);
     if (funcDuration < maxDuration)
     {
         auto sleeptime = maxDuration - funcDuration;
@@ -337,11 +337,11 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
             const int maximumY = mvImagePyramid[lvl].rows - EDGE_THRESHOLD + 3;
 
 
-            this->FAST(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
+            this->FAST<uchar>(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
                        levelKpts, iniThFAST, lvl);
 
             if (levelKpts.empty())
-                this->FAST(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
+                this->FAST<uchar>(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
                            levelKpts, minThFAST, lvl);
 
 
@@ -411,14 +411,14 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
 
                     std::vector<cv::KeyPoint> patchKpts;
 
-                    this->FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
+                    this->FAST<uchar>(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
                             patchKpts, iniThFAST, lvl);
                     //cv::FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
                     //         patchKpts, iniThFAST, true);
 
                     if (patchKpts.empty())
 
-                        this->FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
+                        this->FAST<uchar>(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
                                patchKpts, minThFAST, lvl);
                         //cv::FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
                         //         patchKpts, minThFAST, true);
@@ -482,9 +482,8 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
     }
 }
 
-
-//move to separate file?
-void ORBextractor::FAST(cv::Mat img, std::vector<cv::KeyPoint> &keypoints, int &threshold, int level)
+template <typename T>
+void ORBextractor::FAST(cv::Mat img, std::vector<cv::KeyPoint> &keypoints, int threshold, int level)
 {
     keypoints.clear();
 
@@ -504,15 +503,15 @@ void ORBextractor::FAST(cv::Mat img, std::vector<cv::KeyPoint> &keypoints, int &
         threshold_tab = threshold_tab_min;
 
 
-    uchar cornerScores[img.cols*3];
+    T cornerScores[img.cols*3];
     int cornerPos[img.cols*3];
 
     memset(cornerScores, 0, img.cols*3);
     memset(cornerPos, 0, img.cols*3);
 
-    uchar* currRowScores = &cornerScores[0];
-    uchar* prevRowScores = &cornerScores[img.cols];
-    uchar* pprevRowScores = &cornerScores[img.cols*2];
+    T* currRowScores = &cornerScores[0];
+    T* prevRowScores = &cornerScores[img.cols];
+    T* pprevRowScores = &cornerScores[img.cols*2];
 
     int* currRowPos = &cornerPos[0];
     int* prevRowPos = &cornerPos[img.cols];
@@ -530,7 +529,7 @@ void ORBextractor::FAST(cv::Mat img, std::vector<cv::KeyPoint> &keypoints, int &
         ncandidates = 0;
 
         int* tempPos = pprevRowPos;
-        uchar* tempScores = pprevRowScores;
+        T* tempScores = pprevRowScores;
 
         pprevRowPos = prevRowPos;
         pprevRowScores = prevRowScores;
@@ -591,7 +590,7 @@ void ORBextractor::FAST(cv::Mat img, std::vector<cv::KeyPoint> &keypoints, int &
                             {
                                 currRowPos[ncandidates++] = j;
 
-                                currRowScores[j] = CornerScore(pointer, offset, threshold);
+                                currRowScores[j] = CornerScore(pointer, offset, threshold);//CornerScore_Harris(pointer, level); //
                                 break;
                             }
                         } else
@@ -614,7 +613,7 @@ void ORBextractor::FAST(cv::Mat img, std::vector<cv::KeyPoint> &keypoints, int &
                             {
                                 currRowPos[ncandidates++] = j;
 
-                                currRowScores[j] = CornerScore(pointer, offset, threshold);
+                                currRowScores[j] = CornerScore(pointer, offset, threshold);//CornerScore_Harris(pointer, level);//
                                 break;
                             }
                         } else
@@ -645,7 +644,7 @@ void ORBextractor::FAST(cv::Mat img, std::vector<cv::KeyPoint> &keypoints, int &
 }
 
 
-int ORBextractor::CornerScore(const uchar* pointer, const int offset[], int &threshold)
+int ORBextractor::CornerScore(const uchar* pointer, const int offset[], int threshold)
 {
     int val = pointer[0];
     int i;
@@ -738,6 +737,21 @@ int ORBextractor::CornerScore(const uchar* pointer, const int offset[], int &thr
             b0 = b;
     }
     return -b0 - 1;
+}
+
+float ORBextractor::CornerScore_Harris(const uchar* ptr, int lvl)
+{
+    float k = 0.04f;
+    int step = mvImagePyramid[lvl].step1();
+
+    int Ix = (ptr[1] - ptr[-1])*2 + (ptr[-step+1] - ptr[-step-1]) + (ptr[step+1] - ptr[step-1]);
+    int Iy = (ptr[step] - ptr[-step])*2 + (ptr[step-1] - ptr[-step-1]) + (ptr[step+1] - ptr[-step+1]);
+    int dxx = Ix*Ix;
+    int dyy = Iy*Iy;
+    int dxy = Ix*Iy;
+
+    float r = dxx*dyy - dxy*dxy - k*(dxx+dyy)*(dxx+dyy);
+    return abs(r);
 }
 
 
