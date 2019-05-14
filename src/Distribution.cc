@@ -13,18 +13,12 @@
 
 
 
-struct ResponseGreater {
-bool operator()(const cv::KeyPoint &k1, const cv::KeyPoint &k2) const
-{
-    return k1.response > k2.response;
-}
-};
-
 static void RetainBestN(std::vector<cv::KeyPoint> &kpts, int N)
 {
     if (kpts.size() <= N)
         return;
-    std::nth_element(kpts.begin(), kpts.begin()+N, kpts.end(), ResponseGreater());
+    std::nth_element(kpts.begin(), kpts.begin()+N, kpts.end(),
+                     [](const cv::KeyPoint &k1, const cv::KeyPoint &k2){return k1.response > k2.response;});
     kpts.resize(N);
 }
 
@@ -36,6 +30,7 @@ Distribution::DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int min
     if (kpts.size() <= N)
         return;
     const float epsilon = 0.1;
+
     if (mode == ANMS_RT || mode == ANMS_KDTREE || mode == SSC)
     {
         std::vector<int> responseVector;
@@ -43,10 +38,10 @@ Distribution::DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int min
             responseVector.emplace_back(kpts[i].response);
         std::vector<int> idx(responseVector.size()); std::iota (std::begin(idx), std::end(idx), 0);
         cv::sortIdx(responseVector, idx, CV_SORT_DESCENDING);
-        std::vector<cv::KeyPoint> keyPointsSorted;
+        std::vector<cv::KeyPoint> kptsSorted;
         for (int i = 0; i < kpts.size(); i++)
-            keyPointsSorted.emplace_back(kpts[idx[i]]);
-        kpts = keyPointsSorted;
+            kptsSorted.emplace_back(kpts[idx[i]]);
+        kpts = kptsSorted;
     }
     switch (mode)
     {
@@ -249,6 +244,7 @@ void Distribution::DistributeKeypointsQuadTree(std::vector<cv::KeyPoint>& kpts, 
             }
         }
     }
+
     std::vector<cv::KeyPoint> resKpts;
     resKpts.reserve(N);
 
@@ -279,17 +275,12 @@ void Distribution::DistributeKeypointsQuadTree(std::vector<cv::KeyPoint>& kpts, 
 }
 
 
-struct CompareVecSz
-{
-bool operator()(const ExtractorNode *n1, const ExtractorNode *n2) const
-{
-    return (n1->nodeKpts.size() > n2->nodeKpts.size());
-}
-};
-
 void Distribution::DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyPoint>& kpts, const int minX,
                                                             const int maxX, const int minY, const int maxY, const int N)
 {
+    //TODO: fix so results equal orbslam's results
+    // (seems it literally cannot be done, as orbslams implementation is not deterministic)
+
     assert(!kpts.empty());
 
     const int nroots = round(static_cast<float>(maxX-minX)/(maxY-minY));
@@ -358,6 +349,21 @@ void Distribution::DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyP
 
         while (current != nodesList.end())
         {
+
+            /*
+            //TODO:remove
+            if (current->nodeKpts[0].pt.x > 0 && current->nodeKpts[0].pt.y > 50 &&
+                current->nodeKpts[0].pt.x < 40 && current->nodeKpts[0].pt.y < 90)
+            {
+                std::cout << "kpt vec of node:\n";
+                for (auto &kpt : current->nodeKpts)
+                {
+                    std::cout << kpt.pt << "\n";
+                }
+            }
+            */
+            //////////////
+
             if (current->leaf)
             {
                 ++current;
@@ -432,7 +438,9 @@ void Distribution::DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyP
 
                 nodesToExpand.clear();
 
-                std::sort(prevNodes.begin(), prevNodes.end(), CompareVecSz());
+                std::sort(prevNodes.begin(), prevNodes.end(),
+                          [](const ExtractorNode *n1, const ExtractorNode *n2)
+                          {return n1->nodeKpts.size() > n2->nodeKpts.size();});
 
                 for (auto &node : prevNodes)
                 {
@@ -539,22 +547,66 @@ void Distribution::DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyP
 void Distribution::DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, const int minX, const int maxX,
                                            const int minY, const int maxY, const int N)
 {
+    //std::sort(kpts.begin(), kpts.end(), [](const cv::KeyPoint &a, const cv::KeyPoint &b){return (a.pt.x < b.pt.x ||
+    //        (a.pt.x == b.pt.x && a.pt.y < b.pt.y));});
+
+    int cellSize = 80;
+    const float width = maxX - minX;
+    const float height = maxY - minY;
+
+    const int npatchesInX = width / cellSize;
+    const int npatchesInY = height / cellSize;
+    const int patchWidth = ceil(width / npatchesInX);
+    const int patchHeight = ceil(height / npatchesInY);
+
+    int nCells = npatchesInX * npatchesInY;
+    std::vector<std::vector<cv::KeyPoint>> cellkpts(nCells);
+    int nPerCell = std::floor((float)N / nCells);
+
+
+    for (auto &kpt : kpts)
+    {
+        int idx = (int)(kpt.pt.y/patchHeight) * npatchesInX + (int)(kpt.pt.x/patchWidth);
+        if (idx >= nCells)
+            idx = nCells-1;
+        cellkpts[idx].emplace_back(kpt);
+    }
+
+    kpts.clear();
+    kpts.reserve(N*2);
+
+    for (auto &kptVec : cellkpts)
+    {
+        //std::cout << "\nsz of curr cell = " << kptVec.size();
+        RetainBestN(kptVec, nPerCell);
+        kpts.insert(kpts.end(), kptVec.begin(), kptVec.end());
+        //std::cout << "\nsz of curr cell after retain = " << kptVec.size();
+    }
+
+
+
+#if 0
+    //TODO: test
     const int width = maxX - minX;
     const int height = maxY - minY;
 
-    int cellCols = 6;
-    int cellRows = 6;
+    int cellCols = 20;
+    int cellRows = 20;
     if (width > height)
         cellCols *= (int)((float)width / (float)height);
     else
         cellRows *= (int)((float)height / (float)width);
+
+
     const int cellWidth = std::ceil(width / cellCols);
     const int cellHeight = std::ceil(height / cellRows);
 
 
 
+
+
     const int nCells = cellCols * cellRows;
-    int nPerCell = (int)((float)N / nCells);
+    int nPerCell = ceil((float)N / nCells);
 
     std::vector<std::vector<cv::KeyPoint>> cellkpts(nCells);
 
@@ -564,11 +616,20 @@ void Distribution::DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, cons
         kptVec.reserve(kpts.size());
     }
 
+
+    /*
+    std::cout << "\n\nDims: x between " << cv::Point(minX, maxX) << ", y between " << cv::Point(minY, maxY) <<
+        "\ncellCols=" << cellCols << ", cellRows=" << cellRows
+        << ", cellWidth=" << cellWidth << ", cellHeight=" << cellHeight << "\nN per Cell = " << ceil(N / nCells) <<
+        ", nCells = " << nCells << ", N = " << N << "\n\n";
+    */
+
     for (auto &kpt : kpts)
     {
         int idx = (int)(kpt.pt.y/cellHeight) * cellCols + (int)(kpt.pt.x/cellWidth);
         if (idx >= nCells)
             idx = nCells-1;
+        //std::cout << "cell-idx of kpt " << kpt.pt <<" would be: " << idx << "\n";
         cellkpts[idx].emplace_back(kpt);
     }
 
@@ -580,8 +641,12 @@ void Distribution::DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, cons
         RetainBestN(kptVec, nPerCell);
         kpts.insert(kpts.end(), kptVec.begin(), kptVec.end());
     }
+#endif
 }
 
+/*
+ * PointCloud and KdTree taken from BAILOOL/ANMS-Codes
+ */
 
 void Distribution::DistributeKeypointsKdT_ANMS(std::vector<cv::KeyPoint> &kpts, int rows, int cols, int N, float epsilon)
 {
@@ -600,7 +665,7 @@ void Distribution::DistributeKeypointsKdT_ANMS(std::vector<cv::KeyPoint> &kpts, 
     PointCloud<int> cloud;
     generatePointCloud(cloud, kpts);
     typedef nanoflann::KDTreeSingleIndexAdaptor<nanoflann::L2_Simple_Adaptor<int, PointCloud<int>>, PointCloud<int>, 2>
-                                                                                                                     a_kd_tree;
+            a_kd_tree;
     a_kd_tree tree(2, cloud, nanoflann::KDTreeSingleIndexAdaptorParams(25));
     tree.buildIndex();
 
@@ -752,9 +817,12 @@ void Distribution::DistributeKeypointsRT_ANMS(std::vector<cv::KeyPoint> &kpts, i
 
 void Distribution::DistributeKeypointsSSC(std::vector<cv::KeyPoint> &kpts, int rows, int cols, int N, float epsilon)
 {
+    //for (auto &kpt : kpts)
+    //    std::cout << "\nkpt.response=" << kpt.response;
+    //return;
     int numerator1 = rows + cols + 2*N;
     long long discriminant = (long long)4*cols + (long long)4*N + (long long)4*rows*N +
-            (long long)rows*rows + (long long)cols*cols - (long long)2*cols*rows + (long long)4*cols*rows*N;
+                             (long long)rows*rows + (long long)cols*cols - (long long)2*cols*rows + (long long)4*cols*rows*N;
 
     double denominator = 2*(N-1);
 
@@ -781,11 +849,11 @@ void Distribution::DistributeKeypointsSSC(std::vector<cv::KeyPoint> &kpts, int r
             break;
         }
         tempResult.clear();
-
         double c = (double)width/2.0;
-        int cellCols = floor(cols/c);
-        int cellRows = floor(rows/c);
+        int cellCols = std::floor(cols/c);
+        int cellRows = std::floor(rows/c);
         std::vector<std::vector<bool>> covered(cellRows+1, std::vector<bool>(cellCols+1, false));
+
 
         for (int i = 0; i < kpts.size(); ++i)
         {
