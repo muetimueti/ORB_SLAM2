@@ -287,42 +287,40 @@ void FASTdetector::FAST(cv::Mat &img, std::vector<cv::KeyPoint> &keypoints, int 
 }
 
 
-float FASTdetector::CornerScore_Harris(const uchar* ptr, int step)
+float FASTdetector::CornerScore_Harris(const uchar* pointer, int step)
 {
     float k = 0.04f;
-    //int step = imagePyramid[lvl].step1();
+    int sz = 2;
+    int sz2 = sz*sz;
+    int offset[sz2];
+    for (int i = 0; i < sz; ++i)
+        for (int j = 0; j < sz; ++j)
+        {
+            offset[i*sz + j] = i*step + j;
+        }
 
-    /*
-    int dxx = 0, dyy = 0, dxy = 0;
-    for (int i = 0; i < 49; ++i)
+    int Ixx = 0, Iyy = 0, Ixy = 0;
+    for (int i = 0; i < sz2; ++i)
     {
-        uchar *ptr = pointer + (i%7)*step +
+        const uchar *ptr = pointer + offset[i];
         int Ix = (ptr[1] - ptr[-1])*2 + (ptr[-step+1] - ptr[-step-1]) + (ptr[step+1] - ptr[step-1]);
         int Iy = (ptr[step] - ptr[-step])*2 + (ptr[step-1] - ptr[-step-1]) + (ptr[step+1] - ptr[-step+1]);
-        int dxx = Ix*Ix;
-        int dyy = Iy*Iy;
-        int dxy = Ix*Iy;
+        Ixx += Ix*Ix;
+        Iyy += Iy*Iy;
+        Ixy += Ix*Iy;
     }
-     */
-
-    int Ix = (ptr[1] - ptr[-1])*2 + (ptr[-step+1] - ptr[-step-1]) + (ptr[step+1] - ptr[step-1]);
-    int Iy = (ptr[step] - ptr[-step])*2 + (ptr[step-1] - ptr[-step-1]) + (ptr[step+1] - ptr[-step+1]);
-    int dxx = Ix*Ix;
-    int dyy = Iy*Iy;
-    //int dxy = Ix*Iy;
-    /*
-    std::cout << "\nIx = " << Ix << ", Iy = " << Iy << ", dxx = " << dxx << ", dyy = " << dyy << ", dxy = " << dxy;
-    std::cout << "\ndxx*dyy = " << dxx*dyy << ", dxy^2 = " << dxy * dxy;
-     */
-
-    //float r = dxx*dyy - dxy*dxy - k*(dxx+dyy)*(dxx+dyy);
-    return k*(dxx+dyy);
+    return Ixx*Iyy - Ixy*Ixy - k*(Ixx+Iyy)*(Ixx+Iyy);
 }
 
 
 float FASTdetector::CornerScore_Experimental(const uchar* ptr, int step)
 {
+    //float a = ptr[-1] - ptr[1] + ptr[-2] - ptr[2];
+    //float b = ptr[-step] - ptr[step] + ptr[-2*step] - ptr[2*step];
+    //float c = ptr[-step-1] - ptr[step+1] + ptr[-step+1] - ptr[step-1];
 
+    //return a * b;
+    return (ptr[-step] - ptr[step] + ptr[-1] - ptr[1]);
 }
 
 
@@ -334,7 +332,7 @@ float FASTdetector::CornerScore_Sum(const uchar* ptr, const int offset[])
     {
         diff += abs(v - ptr[offset[i]]);
     }
-    return diff;
+    return (float)diff;
 }
 
 

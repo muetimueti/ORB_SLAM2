@@ -35,7 +35,7 @@ using namespace std;
 
 void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
                 vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
-string GetDistributionName(Distribution::DistributionMethod d);
+string GetDistributionName(Distribution::DistributionMethod d, FASTdetector::ScoreType s);
 
 int main(int argc, char **argv)
 {
@@ -124,7 +124,8 @@ int main(int argc, char **argv)
 
     Distribution::DistributionMethod d;
     d = SLAM.GetTracker()->GetLeftExtractor()->GetDistribution();
-    string distributionName = GetDistributionName(d);
+    FASTdetector::ScoreType sc = SLAM.GetTracker()->GetLeftExtractor()->GetScoreType();
+    string distributionName = GetDistributionName(d, sc);
     bool dPerLvl = SLAM.GetTracker()->GetLeftExtractor()->AreKptsDistributedPerLevel();
 
     // Stop all threads
@@ -204,28 +205,57 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
     }
 }
 
-string GetDistributionName(Distribution::DistributionMethod d)
+string GetDistributionName(Distribution::DistributionMethod d, FASTdetector::ScoreType s)
 {
-    typedef Distribution::DistributionMethod distr;
+    using distr = Distribution::DistributionMethod;
+    string res;
     switch(d)
     {
         case (distr::KEEP_ALL):
-            return string("all_kept");
+            res.append("all_kept");
+            break;
         case (distr::NAIVE):
-            return string("topN");
+            res.append("topN");
+            break;
         case (distr::QUADTREE):
-            return string("quadtree");
+            res.append("quadtree");
+            break;
         case (distr::QUADTREE_ORBSLAMSTYLE):
-            return string("quadtree_os");
+            res.append("quadtree_os");
+            break;
         case (distr::GRID):
-            return string("bucketing");
+            res.append("bucketing");
+            break;
         case (distr::ANMS_KDTREE):
-            return string("KDT-ANMS");
+            res.append("KDT-ANMS");
+            break;
         case (distr::ANMS_RT):
-            return string("RT-ANMS");
+            res.append("RT-ANMS");
+            break;
         case (distr::SSC):
-            return string("SSC");
+            res.append("SSC");
+            break;
         default:
-            return string("unknown");
+            res.append("unknown");
+            break;
     }
+    switch (s)
+    {
+        case (FASTdetector::OPENCV):
+            res.append("_ocv");
+            break;
+        case (FASTdetector::HARRIS):
+            res.append("_hrs");
+            break;
+        case (FASTdetector::SUM):
+            res.append("_sum");
+            break;
+        case (FASTdetector::EXPERIMENTAL):
+            res.append("_exp");
+            break;
+        default:
+            res.append("_na");
+            break;
+    }
+    return res;
 }

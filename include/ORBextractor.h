@@ -84,6 +84,16 @@ public:
 
     void SetFASTThresholds(int ini, int min);
 
+    void inline SetScoreType(FASTdetector::ScoreType s)
+    {
+        fast.SetScoreType(s);
+    }
+
+    FASTdetector::ScoreType inline GetScoreType()
+    {
+        return fast.GetScoreType();
+    }
+
     std::vector<cv::Mat> mvImagePyramid;
 
 protected:

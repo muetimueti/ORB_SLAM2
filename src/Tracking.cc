@@ -117,11 +117,13 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     int fMinThFAST = fSettings["ORBextractor.minThFAST"];
     int mode = fSettings["ORBextractor.distribution"];
     int distributePerLevel = fSettings["ORBextractor.distributePerLevel"];
+    int scoreType = fSettings["ORBextractor.scoreType"];
 
 
     mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
     mpORBextractorLeft->SetDistribution(mode);
     mpORBextractorLeft->SetDistributionPerLevel((bool)distributePerLevel);
+    mpORBextractorLeft->SetScoreType(static_cast<FASTdetector::ScoreType>(scoreType));
 
     if(sensor==System::STEREO)
         mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);

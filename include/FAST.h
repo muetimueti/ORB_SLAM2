@@ -27,15 +27,20 @@ public:
 
     enum ScoreType
     {
-    OPENCV,
-    HARRIS,
-    SUM,
-    EXPERIMENTAL
+    OPENCV = 0,
+    HARRIS = 1,
+    SUM = 2,
+    EXPERIMENTAL = 3
     };
 
     void inline SetScoreType(ScoreType t)
     {
         scoreType = t;
+    }
+
+    ScoreType inline GetScoreType()
+    {
+        return scoreType;
     }
 
 protected:
