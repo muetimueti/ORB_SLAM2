@@ -330,7 +330,7 @@ float FASTdetector::CornerScore_Sum(const uchar* ptr, const int offset[])
     int diff = 0;
     for (int i = 0; i < CIRCLE_SIZE; ++i)
     {
-        diff += abs(v - ptr[offset[i]]);
+        diff += v - ptr[offset[i]];
     }
     return (float)diff;
 }

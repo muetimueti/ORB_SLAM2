@@ -7,6 +7,8 @@
 #include "include/ORBextractor.h"
 #include "include/ORBconstants.h"
 
+#define MYFAST 1
+
 
 
 namespace ORB_SLAM2
@@ -230,17 +232,19 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
         resultKeypoints.insert(resultKeypoints.end(), allkpts[lvl].begin(), allkpts[lvl].end());
     }
 
-    //TODO: activate max duration
-    //ensure feature detection always takes 50ms
-    unsigned long maxDuration = 100000;
+    //TODO: de-/activate max duration
+#if 1
+    //ensure feature detection always takes x ms
+    unsigned long maxDuration = 50000;
     std::chrono::high_resolution_clock::time_point funcExit = std::chrono::high_resolution_clock::now();
     auto funcDuration = std::chrono::duration_cast<std::chrono::microseconds>(funcExit-funcEntry).count();
-    //assert(funcDuration <= maxDuration);
+    assert(funcDuration <= maxDuration);
     if (funcDuration < maxDuration)
     {
         auto sleeptime = maxDuration - funcDuration;
         usleep(sleeptime);
     }
+#endif
 }
 
 
@@ -330,20 +334,14 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
             const int maximumX = mvImagePyramid[lvl].cols - EDGE_THRESHOLD + 3;
             const int maximumY = mvImagePyramid[lvl].rows - EDGE_THRESHOLD + 3;
 
-            //std::cout << "lvl " << lvl << ": minX=" << minimumX << ", maxX=" << maximumX <<
-            //   ", minY=" << minimumY << ", maxY=" << maximumY << "\n";
-
-            //cv::Range colSelect(minimumX, maximumX);
-            //cv::Range rowSelect(minimumY, maximumY);
-            //cv::Mat levelMat = mvImagePyramid[lvl](rowSelect, colSelect);
 
 #if MYFAST
-            fast.FAST(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
+            fast.FAST(mvImagePyramid[lvl].rowRange(minimumY, maximumY).colRange(minimumX, maximumX),
                       levelKpts, iniThFAST, lvl);
 
             if (levelKpts.empty())
             {
-                fast.FAST(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
+                fast.FAST(mvImagePyramid[lvl].rowRange(minimumY, maximumY).colRange(minimumX, maximumX),
                           levelKpts, minThFAST, lvl);
             }
 #else
@@ -398,15 +396,6 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
             const int npatchesInY = height / cellSize;
             const int patchWidth = ceil(width / npatchesInX);
             const int patchHeight = ceil(height / npatchesInY);
-
-            /*
-            //Todo: remove
-            std::cout << "pyramid[" << lvl << "]: cols = " << mvImagePyramid[lvl].cols <<
-            ", rows = " << mvImagePyramid[lvl].rows << "\nmaximumX = " << maximumX << ", maximumY = " << maximumY <<
-            ", minimumX = " << minimumX << ", minimumY = " << minimumY <<
-            "\nwidth = " << width << ", height = " << height << ", npatchesinX = " << npatchesInX << ", npatchesinY = "
-            << npatchesInY << ", patchWidth = " << patchWidth << ", patchHeight = " << patchHeight << "\n";
-             */
 
             for (int py = 0; py < npatchesInY; ++py)
             {
