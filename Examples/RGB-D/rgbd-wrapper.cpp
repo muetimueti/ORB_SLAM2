@@ -1,14 +1,14 @@
-#include<iostream>
-#include<algorithm>
-#include<fstream>
-#include<chrono>
+#include <iostream>
+#include <algorithm>
+#include <fstream>
+#include <chrono>
 #include <sys/stat.h>
 #include <sstream>
 #include "include/Distribution.h"
 
-#include<opencv2/core/core.hpp>
+#include <opencv2/core/core.hpp>
 
-#include<System.h>
+#include <System.h>
 
 using namespace std;
 
@@ -35,18 +35,50 @@ int main(int argc, char **argv)
     }
 
     int N = stoi(argv[5]);
+    string vocPath = string(argv[1]);
+    string settingsPath = string(argv[2]);
+    string sequencePath = string(argv[3]);
+    string associationPath = string(argv[4]);
 
-    string settingspath = string(argv[2]);
+    int mode = 0;
 
-    ifstream settingsfile;
-    //TODO: implement
+    for (; mode < 7; ++mode)
+    {
+        fstream settingsFile;
+        settingsFile.open(settingsPath, ios::in);
+        fstream tempFile;
+        string tempPath = "tempSettings.yaml";
+        tempFile.open("tempSettings.yaml", ios::out);
+        if (!settingsFile.is_open() || !tempFile.is_open())
+        {
+            cerr << "\nfailed to open settings file...\n";
+            exit(EXIT_FAILURE);
+        }
+        string line;
+        string lookup = "ORBextractor.distribution";
+        while(getline(settingsFile, line))
+        {
+            int k = line.find(lookup);
+            if (k != string::npos)
+            {
+                line.replace(27, 1, to_string(mode));
+            }
+            tempFile << line << "\n";
+        }
 
-    CallORB_SLAM2(argv);
+        remove(settingsPath.c_str());
+        rename(tempPath.c_str(), settingsPath.c_str());
+        settingsFile.close();
+        tempFile.close();
+        for (int i = 0; i < N; ++i)
+        {
+            CallORB_SLAM2(argv);
+        }
+    }
 }
 
 int CallORB_SLAM2(char **argv)
 {
-
     // Retrieve paths to images
     vector<string> vstrImageFilenamesRGB;
     vector<string> vstrImageFilenamesD;

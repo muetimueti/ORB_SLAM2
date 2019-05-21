@@ -8,6 +8,7 @@
 #include "include/ORBconstants.h"
 
 #define MYFAST 1
+#define ENABLE_MAX_DURATION 1
 
 
 
@@ -231,11 +232,9 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
     {
         resultKeypoints.insert(resultKeypoints.end(), allkpts[lvl].begin(), allkpts[lvl].end());
     }
-
-    //TODO: de-/activate max duration
-#if 1
+#if ENABLE_MAX_DURATION
     //ensure feature detection always takes x ms
-    unsigned long maxDuration = 50000;
+    unsigned long maxDuration = 35000;
     std::chrono::high_resolution_clock::time_point funcExit = std::chrono::high_resolution_clock::now();
     auto funcDuration = std::chrono::duration_cast<std::chrono::microseconds>(funcExit-funcEntry).count();
     assert(funcDuration <= maxDuration);
@@ -250,6 +249,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
 
 void ORBextractor::ComputeAngles(std::vector<std::vector<cv::KeyPoint>> &allkpts)
 {
+#pragma omp parallel for
     for (int lvl = 0; lvl < nlevels; ++lvl)
     {
         for (auto &kpt : allkpts[lvl])
@@ -381,6 +381,7 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
     {
         int c = std::min(mvImagePyramid[nlevels-1].rows, mvImagePyramid[nlevels-1].cols);
         assert(cellSize < c && cellSize > 16);
+#pragma omp parallel for
         for (int lvl = 0; lvl < nlevels; ++lvl)
         {
             std::vector<cv::KeyPoint> levelKpts;
@@ -443,8 +444,6 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
                                  patchKpts, minThFAST, true);
                     }
 #endif
-
-
                     if(patchKpts.empty())
                         continue;
 

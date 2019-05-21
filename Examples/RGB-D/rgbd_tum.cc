@@ -149,17 +149,29 @@ int main(int argc, char **argv)
     int n = name.rfind(delim, name.length()-2);
     cout << "\n" << name;
     name = name.substr(n+1, name.length()-n-2);
+    name += "/";
 
     stringstream ssC, ssK;
 
     struct stat buf{};
+    string tem = "trajectories/";
+    tem += name;
+    tem += "/";
+    bool dex = (stat(tem.c_str(), &buf) == 0);
+    if (!dex) mkdir(tem.c_str(), S_IRWXU);
+
+    tem += distributionName;
+    tem += "/";
+    dex = (stat(tem.c_str(), &buf) == 0);
+    if (!dex) mkdir(tem.c_str(), S_IRWXU);
+
     for (int i = 1; i< 5000; ++i)
     {
         ssC.str(string());
         ssK.str(string());
-        ssC << "trajectories/" << name << "_" << distributionName << "_" << (dPerLvl? "dpl_" : "npl_") << to_string(i)
+        ssC << "trajectories/" << name << distributionName << "/" << (dPerLvl? "dpl_" : "npl_") << to_string(i)
             << "-ct.txt";
-        ssK << "trajectories/" << name << "_" << distributionName << "_" << (dPerLvl? "dpl_" : "npl_") << to_string(i)
+        ssK << "trajectories/" << name << distributionName << "/" << (dPerLvl? "dpl_" : "npl_") << to_string(i)
             << "-kt.txt";
         string sC = ssC.str();
         string sK = ssK.str();
@@ -254,7 +266,7 @@ string GetDistributionName(Distribution::DistributionMethod d, FASTdetector::Sco
             res.append("_exp");
             break;
         default:
-            res.append("_na");
+            res.append("");
             break;
     }
     return res;
