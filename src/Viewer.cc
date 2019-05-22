@@ -166,6 +166,7 @@ void Viewer::Run()
     }
 
     SetFinish();
+
 }
 
 void Viewer::RequestFinish()

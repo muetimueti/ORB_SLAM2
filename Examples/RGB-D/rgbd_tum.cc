@@ -186,7 +186,6 @@ int main(int argc, char **argv)
             cerr << "\nToo many trajectory files, would rather not write another one\n";
     }
 
-
     return 0;
 }
 

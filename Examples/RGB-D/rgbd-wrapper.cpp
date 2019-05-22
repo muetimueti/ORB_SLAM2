@@ -10,11 +10,31 @@
 
 #include <System.h>
 
+
+namespace settings {
+string distributionSetting = "ORBextractor.distribution";
+int distrOffset = 27;
+string dplSetting = "ORBextractor.ORBextractor.distributePerLevel";
+int dplOffset = 33;
+string scoreSetting = "ORBextractor.scoreType";
+int scoreOffset = 24;
+string nfeatSetting = "ORBextractor.nFeatures";
+int nfeatOffset = 24;
+string scaleFSetting = "ORBextractor.scaleFactor";
+int scaleFOffset = 26;
+string FASTiniThSetting = "ORBextractor.iniThFAST";
+string FASTminThSetting = "ORBextractor.minThFAST";
+int FASTThOffset = 24;
+string nLevelsSetting = "ORBextractor.nLevels";
+int nLevelsOffset = 22;
+}
+
 using namespace std;
+using namespace settings;
 
 void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
                 vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
-string GetDistributionName(Distribution::DistributionMethod d);
+string GetDistributionName(Distribution::DistributionMethod d, FASTdetector::ScoreType s);
 
 /**
  * @param argc needs to be 6
@@ -24,6 +44,9 @@ string GetDistributionName(Distribution::DistributionMethod d);
  */
 
 int CallORB_SLAM2(char **argv);
+void replaceLine(string &path, string &toFind, string set, int offset);
+void resetSettings(string settingsPath);
+
 
 int main(int argc, char **argv)
 {
@@ -42,226 +65,61 @@ int main(int argc, char **argv)
 
     int mode = 0;
 
+    string call = "(cd /home/ralph/CLionProjects/ORB_SLAM2/ && exec Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/TEST3.yaml /home/ralph/SLAM/rgbd_dataset_freiburg3_long_office_household/ /home/ralph/SLAM/rgbd_dataset_freiburg3_long_office_household/associate.txt)";
+
     for (; mode < 7; ++mode)
     {
-        fstream settingsFile;
-        settingsFile.open(settingsPath, ios::in);
-        fstream tempFile;
-        string tempPath = "tempSettings.yaml";
-        tempFile.open("tempSettings.yaml", ios::out);
-        if (!settingsFile.is_open() || !tempFile.is_open())
-        {
-            cerr << "\nfailed to open settings file...\n";
-            exit(EXIT_FAILURE);
-        }
-        string line;
-        string lookup = "ORBextractor.distribution";
-        while(getline(settingsFile, line))
-        {
-            int k = line.find(lookup);
-            if (k != string::npos)
-            {
-                line.replace(27, 1, to_string(mode));
-            }
-            tempFile << line << "\n";
-        }
-
-        remove(settingsPath.c_str());
-        rename(tempPath.c_str(), settingsPath.c_str());
-        settingsFile.close();
-        tempFile.close();
+        replaceLine(settingsPath, distributionSetting, to_string(mode), distrOffset);
         for (int i = 0; i < N; ++i)
-        {
-            CallORB_SLAM2(argv);
-        }
+            system(call.c_str());
+
+        replaceLine(settingsPath, scoreSetting, "3", scoreOffset);
+        for (int i = 0; i < N; ++i)
+            system(call.c_str());
+
+        resetSettings(settingsPath);
     }
 }
 
-int CallORB_SLAM2(char **argv)
+void replaceLine(string &path, string &toFind, string set, int offset)
 {
-    // Retrieve paths to images
-    vector<string> vstrImageFilenamesRGB;
-    vector<string> vstrImageFilenamesD;
-    vector<double> vTimestamps;
-    string strAssociationFilename = string(argv[4]);
-    LoadImages(strAssociationFilename, vstrImageFilenamesRGB, vstrImageFilenamesD, vTimestamps);
-
-    // Check consistency in the number of images and depthmaps
-    int nImages = vstrImageFilenamesRGB.size();
-    if(vstrImageFilenamesRGB.empty())
+    cout << "\nSetting " << toFind << " to " << set << "...\n";
+    fstream settingsFile;
+    settingsFile.open(path, ios::in);
+    fstream tempFile;
+    string tempPath = "tempSettings.yaml";
+    tempFile.open("tempSettings.yaml", ios::out);
+    if (!settingsFile.is_open() || !tempFile.is_open())
     {
-        cerr << endl << "No images found in provided path." << endl;
-        return 1;
+        cerr << "\nfailed to modify settings file...\n";
+        exit(EXIT_FAILURE);
     }
-    else if(vstrImageFilenamesD.size()!=vstrImageFilenamesRGB.size())
+    string line;
+    while(getline(settingsFile, line))
     {
-        cerr << endl << "Different number of images for rgb and depth." << endl;
-        return 1;
-    }
-
-    // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::RGBD,true);
-
-    // Vector for tracking time statistics
-    vector<float> vTimesTrack;
-    vTimesTrack.resize(nImages);
-
-    cout << endl << "-------" << endl;
-    cout << "Start processing sequence ..." << endl;
-    cout << "Images in the sequence: " << nImages << endl << endl;
-
-    // Main loop
-    cv::Mat imRGB, imD;
-    for(int ni=0; ni<nImages; ni++)
-    {
-        // Read image and depthmap from file
-        imRGB = cv::imread(string(argv[3])+"/"+vstrImageFilenamesRGB[ni],CV_LOAD_IMAGE_UNCHANGED);
-        imD = cv::imread(string(argv[3])+"/"+vstrImageFilenamesD[ni],CV_LOAD_IMAGE_UNCHANGED);
-        double tframe = vTimestamps[ni];
-
-        if(imRGB.empty())
+        int k = line.find(toFind);
+        if (k != string::npos)
         {
-            cerr << endl << "Failed to load image at: "
-                 << string(argv[3]) << "/" << vstrImageFilenamesRGB[ni] << endl;
-            return 1;
+            line.replace(offset, set.size(), set);
         }
-
-#ifdef COMPILEDWITHC11
-        std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-#else
-        std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
-#endif
-
-        // Pass the image to the SLAM system
-        SLAM.TrackRGBD(imRGB,imD,tframe);
-
-#ifdef COMPILEDWITHC11
-        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-#else
-        std::chrono::monotonic_clock::time_point t2 = std::chrono::monotonic_clock::now();
-#endif
-
-        double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
-
-        vTimesTrack[ni]=ttrack;
-
-        // Wait to load the next frame
-        double T=0;
-        if(ni<nImages-1)
-            T = vTimestamps[ni+1]-tframe;
-        else if(ni>0)
-            T = tframe-vTimestamps[ni-1];
-
-        if(ttrack<T)
-            usleep((T-ttrack)*1e6);
+        tempFile << line << "\n";
     }
-
-    Distribution::DistributionMethod d;
-    d = SLAM.GetTracker()->GetLeftExtractor()->GetDistribution();
-    string distributionName = GetDistributionName(d);
-    bool dPerLvl = SLAM.GetTracker()->GetLeftExtractor()->AreKptsDistributedPerLevel();
-
-    // Stop all threads
-    SLAM.Shutdown();
-
-    // Tracking time statistics
-    sort(vTimesTrack.begin(),vTimesTrack.end());
-    float totaltime = 0;
-    for(int ni=0; ni<nImages; ni++)
-    {
-        totaltime+=vTimesTrack[ni];
-    }
-    cout << "-------" << endl << endl;
-    cout << "median tracking time: " << vTimesTrack[nImages/2] << endl;
-    cout << "mean tracking time: " << totaltime/nImages << endl;
-
-    // Save camera trajectory
-    string name;
-    string delim = "/";
-    name = string(argv[3]);
-    int n = name.rfind(delim, name.length()-2);
-    cout << "\n" << name;
-    name = name.substr(n+1, name.length()-n-2);
-
-    stringstream ssC, ssK;
-
-    struct stat buf{};
-    for (int i = 1; i< 5000; ++i)
-    {
-        ssC.str(string());
-        ssK.str(string());
-        ssC << "trajectories/" << name << "_" << distributionName << "_" << (dPerLvl? "dpl_" : "npl_") << to_string(i)
-            << "-ct.txt";
-        ssK << "trajectories/" << name << "_" << distributionName << "_" << (dPerLvl? "dpl_" : "npl_") << to_string(i)
-            << "-kt.txt";
-        string sC = ssC.str();
-        string sK = ssK.str();
-        bool ex = (stat(sC.c_str(), &buf) == 0);
-        if (!ex)
-        {
-            SLAM.SaveTrajectoryTUM(sC);
-            SLAM.SaveKeyFrameTrajectoryTUM(sK);
-            break;
-        }
-        if (i == 4999)
-            cerr << "\nToo many trajectory files, would rather not write another one\n";
-    }
-
-
-    return 0;
+    remove(path.c_str());
+    rename(tempPath.c_str(), path.c_str());
+    settingsFile.close();
+    tempFile.close();
 }
 
-void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
-                vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps)
+void resetSettings(string settingsPath)
 {
-    ifstream fAssociation;
-    fAssociation.open(strAssociationFilename.c_str());
-    while(!fAssociation.eof())
-    {
-        string s;
-        getline(fAssociation,s);
-        if(!s.empty())
-        {
-            stringstream ss;
-            ss << s;
-            double t;
-            string sRGB, sD;
-            ss >> t;
-            vTimestamps.push_back(t);
-            ss >> sRGB;
-            vstrImageFilenamesRGB.push_back(sRGB);
-            ss >> t;
-            ss >> sD;
-            vstrImageFilenamesD.push_back(sD);
-
-        }
-    }
+    cout << "\nResetting settingsfile:\n";
+    replaceLine(settingsPath, nfeatSetting, "1000", nfeatOffset);
+    replaceLine(settingsPath, scaleFSetting, "1.2", scaleFOffset);
+    replaceLine(settingsPath, nLevelsSetting, "8", nLevelsOffset);
+    replaceLine(settingsPath, FASTiniThSetting, "20", FASTThOffset);
+    replaceLine(settingsPath, FASTminThSetting, "7", FASTThOffset);
+    replaceLine(settingsPath, distributionSetting, "2", distrOffset);
+    replaceLine(settingsPath, dplSetting, "1", dplOffset);
+    replaceLine(settingsPath, scoreSetting, "0", scoreOffset);
 }
-
-string GetDistributionName(Distribution::DistributionMethod d)
-{
-    typedef Distribution::DistributionMethod distr;
-    switch(d)
-    {
-        case (distr::KEEP_ALL):
-            return string("all_kept");
-        case (distr::NAIVE):
-            return string("topN");
-        case (distr::QUADTREE):
-            return string("quadtree");
-        case (distr::QUADTREE_ORBSLAMSTYLE):
-            return string("quadtree_os");
-        case (distr::GRID):
-            return string("bucketing");
-        case (distr::ANMS_KDTREE):
-            return string("KDT-ANMS");
-        case (distr::ANMS_RT):
-            return string("RT-ANMS");
-        case (distr::SSC):
-            return string("SSC");
-        default:
-            return string("unknown");
-    }
-}
-
 
