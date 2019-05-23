@@ -63,12 +63,16 @@ int main(int argc, char **argv)
     string sequencePath = string(argv[3]);
     string associationPath = string(argv[4]);
 
+
+
+    string call = "(cd /home/ralph/CLionProjects/ORB_SLAM2/ && exec Examples/RGB-D/rgbd_tum ";
+    call += vocPath + " " + settingsPath + " " + sequencePath + " " + associationPath + ")";
+
     int mode = 0;
-
-    string call = "(cd /home/ralph/CLionProjects/ORB_SLAM2/ && exec Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/TEST3.yaml /home/ralph/SLAM/rgbd_dataset_freiburg3_long_office_household/ /home/ralph/SLAM/rgbd_dataset_freiburg3_long_office_household/associate.txt)";
-
     for (; mode < 7; ++mode)
     {
+        if (mode == 1)
+            continue;
         replaceLine(settingsPath, distributionSetting, to_string(mode), distrOffset);
         for (int i = 0; i < N; ++i)
             system(call.c_str());
