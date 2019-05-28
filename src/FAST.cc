@@ -259,22 +259,6 @@ void FASTdetector::FAST(cv::Mat &img, std::vector<cv::KeyPoint> &keypoints, int 
             int pos = prevRowPos[k];
             float score = prevRowScores[pos];
 
-            //TODO: remove after debugging FAST
-            /*
-            if (i == 35 && score == 42)
-            {
-                std::cout <<"scores of row with y = 35 (any patch), x = " << pos << "\n"
-                            "pprevrow[x-1]: "<<(int)pprevRowScores[pos-1]<<
-                ", pprevrow[x]: " << (int)pprevRowScores[pos] << ", pprevrow[x+1]: " << (int)pprevRowScores[pos+1] <<
-                "\nprevrow[x-1]: " << (int)prevRowScores[pos-1] << ", candodate: " << score << ", prevrow[x+1]: " <<
-                (int)prevRowScores[pos+1] << "\ncurrow[x-1]: " << (int)currRowScores[pos-1] << ", currow[x]: " <<
-                (int)currRowScores[pos] << ", currow[x+1]: " << (int)currRowScores[pos+1] << "\n\n";
-            }
-             */
-
-
-            //////////////////////////////////////
-
 
             if (score > pprevRowScores[pos-1] && score > pprevRowScores[pos] && score > pprevRowScores[pos+1] &&
                 score > prevRowScores[pos+1] && score > prevRowScores[pos-1] &&

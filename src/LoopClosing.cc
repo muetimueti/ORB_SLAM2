@@ -66,6 +66,7 @@ void LoopClosing::Run()
             // Detect loop candidates and check covisibility consistency
             if(DetectLoop())
             {
+#if 0
                // Compute similarity transformation [sR|t]
                // In the stereo/RGBD case s=1
                if(ComputeSim3())
@@ -73,6 +74,7 @@ void LoopClosing::Run()
                    // Perform loop fusion and pose graph optimization
                    CorrectLoop();
                }
+#endif
             }
         }       
 

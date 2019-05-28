@@ -80,6 +80,17 @@ public:
         distributePerLevel = dpL;
     }
 
+    void inline SetPatternsize(int n)
+    {
+        assert (n == 16 || n == 8 || n == 12);
+        patternsize = n;
+    }
+
+    int inline GetPatternsize()
+    {
+        return patternsize;
+    }
+
     void SetnFeatures(int n);
 
     void SetFASTThresholds(int ini, int min);
@@ -92,6 +103,11 @@ public:
     FASTdetector::ScoreType inline GetScoreType()
     {
         return fast.GetScoreType();
+    }
+
+    int inline GetnLevels()
+    {
+        return nlevels;
     }
 
     std::vector<cv::Mat> mvImagePyramid;
@@ -130,6 +146,7 @@ protected:
     int nlevels;
     int iniThFAST;
     int minThFAST;
+    int patternsize;
 
     Distribution::DistributionMethod kptDistribution;
 

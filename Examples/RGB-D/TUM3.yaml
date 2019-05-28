@@ -68,6 +68,10 @@ ORBextractor.distributePerLevel: 1
 # 0=OpenCV, 1=Harris(7x7), 2=Sum, 3=Experimental
 ORBextractor.scoreType: 0
 
+#ORB Extractor: Patternsize for FAST detection
+# legal values: 8, 12, 16
+ORBextractor.patternSize: 16
+
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters
 #--------------------------------------------------------------------------------------------

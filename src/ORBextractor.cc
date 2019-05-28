@@ -7,7 +7,7 @@
 #include "include/ORBextractor.h"
 #include "include/ORBconstants.h"
 
-#define MYFAST 1
+#define MYFAST 0
 #define ENABLE_MAX_DURATION 1
 
 
@@ -46,9 +46,9 @@ float ORBextractor::IntensityCentroidAngle(const uchar* pointer, int step)
 
 
 ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels, int _iniThFAST, int _minThFAST):
-        nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels), iniThFAST(_iniThFAST), minThFAST(_minThFAST),
-        kptDistribution(Distribution::DistributionMethod::SSC), distributePerLevel(true), pixelOffset{},
-        fast(_iniThFAST, _minThFAST, _nlevels)
+        nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels), iniThFAST(_iniThFAST),
+        minThFAST(_minThFAST), patternsize(16), kptDistribution(Distribution::DistributionMethod::SSC),
+        distributePerLevel(true), fast(_iniThFAST, _minThFAST, _nlevels)
 {
     mvScaleFactor.resize(nlevels);
     mvInvScaleFactor.resize(nlevels);
@@ -56,7 +56,6 @@ ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels, int
     nfeaturesPerLevelVec.resize(nlevels);
     mvLevelSigma2.resize(nlevels);
     mvInvLevelSigma2.resize(nlevels);
-    pixelOffset.resize(nlevels * CIRCLE_SIZE);
 
     SetFASTThresholds(_iniThFAST, _minThFAST);
 
@@ -345,13 +344,43 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
                           levelKpts, minThFAST, lvl);
             }
 #else
-            cv::FAST(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
-                     levelKpts, iniThFAST, true);
-            if (levelKpts.empty())
+            switch (patternsize)
             {
-                cv::FAST(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
-                         levelKpts, minThFAST, true);
+                case (12):
+                {
+                    cv::FAST(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
+                             levelKpts, iniThFAST, true, cv::FastFeatureDetector::TYPE_7_12);
+                    if (levelKpts.empty())
+                    {
+                        cv::FAST(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
+                                 levelKpts, minThFAST, true, cv::FastFeatureDetector::TYPE_7_12);
+                    }
+                    break;
+                }
+                case (8):
+                {
+                    cv::FAST(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
+                             levelKpts, iniThFAST, true, cv::FastFeatureDetector::TYPE_5_8);
+                    if (levelKpts.empty())
+                    {
+                        cv::FAST(mvImagePyramid[lvl].rowRange(minimumY, minimumY).colRange(minimumX, maximumX),
+                                 levelKpts, minThFAST, true, cv::FastFeatureDetector::TYPE_5_8);
+                    }
+                    break;
+                }
+                default:
+                {
+                    fast.FAST(mvImagePyramid[lvl].rowRange(minimumY, maximumY).colRange(minimumX, maximumX),
+                              levelKpts, iniThFAST, lvl);
+
+                    if (levelKpts.empty())
+                    {
+                        fast.FAST(mvImagePyramid[lvl].rowRange(minimumY, maximumY).colRange(minimumX, maximumX),
+                                  levelKpts, minThFAST, lvl);
+                    }
+                }
             }
+
 #endif
 
 
@@ -436,12 +465,41 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
                                   patchKpts, minThFAST, lvl);
                     }
 #else
-                    cv::FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
-                             patchKpts, iniThFAST, true);
-                    if (patchKpts.empty())
+                    switch (patternsize)
                     {
-                        cv::FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
-                                 patchKpts, minThFAST, true);
+                        case (12):
+                        {
+                            cv::FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
+                                     patchKpts, iniThFAST, true, cv::FastFeatureDetector::TYPE_7_12);
+                            if (patchKpts.empty())
+                            {
+                                cv::FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
+                                         patchKpts, minThFAST, true, cv::FastFeatureDetector::TYPE_7_12);
+                            }
+                            break;
+                        }
+                        case (8):
+                        {
+                            cv::FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
+                                     patchKpts, iniThFAST, true, cv::FastFeatureDetector::TYPE_5_8);
+                            if (patchKpts.empty())
+                            {
+                                cv::FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
+                                         patchKpts, minThFAST, true, cv::FastFeatureDetector::TYPE_5_8);
+                            }
+                            break;
+                        }
+                        default:
+                        {
+                            fast.FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
+                                      patchKpts, iniThFAST, lvl);
+                            if (patchKpts.empty())
+                            {
+                                fast.FAST(mvImagePyramid[lvl].rowRange(startY, endY).colRange(startX, endX),
+                                          patchKpts, minThFAST, lvl);
+                            }
+                            break;
+                        }
                     }
 #endif
                     if(patchKpts.empty())

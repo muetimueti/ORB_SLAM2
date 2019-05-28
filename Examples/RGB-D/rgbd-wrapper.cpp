@@ -27,6 +27,8 @@ string FASTminThSetting = "ORBextractor.minThFAST";
 int FASTThOffset = 24;
 string nLevelsSetting = "ORBextractor.nLevels";
 int nLevelsOffset = 22;
+string patternSizeSetting = "ORBextractor.patternSize";
+int patternSizeOffset = 26;
 }
 
 using namespace std;
@@ -68,18 +70,26 @@ int main(int argc, char **argv)
     string call = "(cd /home/ralph/CLionProjects/ORB_SLAM2/ && exec Examples/RGB-D/rgbd_tum ";
     call += vocPath + " " + settingsPath + " " + sequencePath + " " + associationPath + ")";
 
-    int mode = 0;
+    resetSettings(settingsPath);
+    int mode = 2;
     for (; mode < 7; ++mode)
     {
-        if (mode == 1)
+        if (mode == 3 || mode == 4 || mode == 5)
             continue;
         replaceLine(settingsPath, distributionSetting, to_string(mode), distrOffset);
+
+        replaceLine(settingsPath, FASTiniThSetting, "10", FASTThOffset);
+        replaceLine(settingsPath, FASTminThSetting, "3", FASTThOffset);
+        replaceLine(settingsPath, patternSizeSetting, "8 ", patternSizeOffset);
+
         for (int i = 0; i < N; ++i)
             system(call.c_str());
 
-        replaceLine(settingsPath, scoreSetting, "3", scoreOffset);
+        replaceLine(settingsPath, patternSizeSetting, "12", patternSizeOffset);
         for (int i = 0; i < N; ++i)
             system(call.c_str());
+
+
 
         resetSettings(settingsPath);
     }
@@ -125,5 +135,6 @@ void resetSettings(string settingsPath)
     replaceLine(settingsPath, distributionSetting, "2", distrOffset);
     replaceLine(settingsPath, dplSetting, "1", dplOffset);
     replaceLine(settingsPath, scoreSetting, "0", scoreOffset);
+    replaceLine(settingsPath, patternSizeSetting, "16", patternSizeOffset);
 }
 

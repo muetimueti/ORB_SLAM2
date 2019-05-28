@@ -35,7 +35,7 @@ using namespace std;
 
 void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
                 vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
-string GetDistributionName(Distribution::DistributionMethod d, FASTdetector::ScoreType s);
+string GetDistributionName(Distribution::DistributionMethod d);
 
 int main(int argc, char **argv)
 {
@@ -124,9 +124,10 @@ int main(int argc, char **argv)
 
     Distribution::DistributionMethod d;
     d = SLAM.GetTracker()->GetLeftExtractor()->GetDistribution();
-    FASTdetector::ScoreType sc = SLAM.GetTracker()->GetLeftExtractor()->GetScoreType();
-    string distributionName = GetDistributionName(d, sc);
-    bool dPerLvl = SLAM.GetTracker()->GetLeftExtractor()->AreKptsDistributedPerLevel();
+    int ptnsz = SLAM.GetTracker()->GetLeftExtractor()->GetPatternsize();
+    int nlvls = SLAM.GetTracker()->GetLeftExtractor()->GetnLevels();
+    string distributionName = GetDistributionName(d);
+
 
     // Stop all threads
     SLAM.Shutdown();
@@ -169,17 +170,17 @@ int main(int argc, char **argv)
     {
         ssC.str(string());
         ssK.str(string());
-        ssC << "trajectories/" << name << distributionName << "/" << (dPerLvl? "dpl_" : "npl_") << to_string(i)
-            << "-ct.txt";
-        ssK << "trajectories/" << name << distributionName << "/" << (dPerLvl? "dpl_" : "npl_") << to_string(i)
-            << "-kt.txt";
+        ssC << "trajectories/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
+        << ("_"+to_string(nlvls)+"lvls_") << to_string(i) << ".txt";
+        ssK << "trajectories/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
+        << ("_"+to_string(nlvls)+"lvls_") << to_string(i) << "-kt.txt";
         string sC = ssC.str();
         string sK = ssK.str();
         bool ex = (stat(sC.c_str(), &buf) == 0);
         if (!ex)
         {
             SLAM.SaveTrajectoryTUM(sC);
-            SLAM.SaveKeyFrameTrajectoryTUM(sK);
+            //SLAM.SaveKeyFrameTrajectoryTUM(sK);
             break;
         }
         if (i == 4999)
@@ -216,7 +217,7 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
     }
 }
 
-string GetDistributionName(Distribution::DistributionMethod d, FASTdetector::ScoreType s)
+string GetDistributionName(Distribution::DistributionMethod d)
 {
     using distr = Distribution::DistributionMethod;
     string res;
@@ -232,7 +233,7 @@ string GetDistributionName(Distribution::DistributionMethod d, FASTdetector::Sco
             res.append("quadtree");
             break;
         case (distr::QUADTREE_ORBSLAMSTYLE):
-            res.append("quadtree_os");
+            res.append("quadtree");
             break;
         case (distr::GRID):
             res.append("bucketing");
@@ -248,24 +249,6 @@ string GetDistributionName(Distribution::DistributionMethod d, FASTdetector::Sco
             break;
         default:
             res.append("unknown");
-            break;
-    }
-    switch (s)
-    {
-        case (FASTdetector::OPENCV):
-            res.append("_ocv");
-            break;
-        case (FASTdetector::HARRIS):
-            res.append("_hrs");
-            break;
-        case (FASTdetector::SUM):
-            res.append("_sum");
-            break;
-        case (FASTdetector::EXPERIMENTAL):
-            res.append("_exp");
-            break;
-        default:
-            res.append("");
             break;
     }
     return res;

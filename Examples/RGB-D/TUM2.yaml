@@ -65,6 +65,14 @@ ORBextractor.distribution: 6
 # If set to false(0), the keypoint vector will be flattened first, then distributed
 ORBextractor.distributePerLevel: 1
 
+#ORB Extractor: Type of score to determine corner-ness in the FAST-algorithm.
+# 0=OpenCV, 1=Harris(7x7), 2=Sum, 3=Experimental
+ORBextractor.scoreType: 0
+
+#ORB Extractor: Patternsize for FAST detection
+# legal values: 8, 12, 16
+ORBextractor.patternSize: 16
+
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters
 #--------------------------------------------------------------------------------------------

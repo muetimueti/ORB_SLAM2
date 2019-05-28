@@ -52,7 +52,7 @@ Distribution::DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int min
         }
         case QUADTREE :
         {
-            DistributeKeypointsQuadTree(kpts, minX, maxX, minY, maxY, N);
+            DistributeKeypointsQuadTree_ORBSLAMSTYLE(kpts, minX, maxX, minY, maxY, N);
             break;
         }
         case QUADTREE_ORBSLAMSTYLE :
