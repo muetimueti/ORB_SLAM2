@@ -126,6 +126,7 @@ int main(int argc, char **argv)
     d = SLAM.GetTracker()->GetLeftExtractor()->GetDistribution();
     int ptnsz = SLAM.GetTracker()->GetLeftExtractor()->GetPatternsize();
     int nlvls = SLAM.GetTracker()->GetLeftExtractor()->GetnLevels();
+    float scalefac = SLAM.GetTracker()->GetLeftExtractor()->GetScaleFactor();
     string distributionName = GetDistributionName(d);
 
 
@@ -166,14 +167,14 @@ int main(int argc, char **argv)
     dex = (stat(tem.c_str(), &buf) == 0);
     if (!dex) mkdir(tem.c_str(), S_IRWXU);
 
-    for (int i = 1; i< 5000; ++i)
+    for (int i = 1; i < 5000; ++i)
     {
         ssC.str(string());
         ssK.str(string());
         ssC << "trajectories/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
-        << ("_"+to_string(nlvls)+"lvls_") << to_string(i) << ".txt";
+        << ("_"+to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << ".txt";
         ssK << "trajectories/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
-        << ("_"+to_string(nlvls)+"lvls_") << to_string(i) << "-kt.txt";
+        << ("_"+to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << "-kt.txt";
         string sC = ssC.str();
         string sK = ssK.str();
         bool ex = (stat(sC.c_str(), &buf) == 0);

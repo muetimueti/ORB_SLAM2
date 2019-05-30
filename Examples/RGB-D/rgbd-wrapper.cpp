@@ -30,6 +30,7 @@ int nLevelsOffset = 22;
 string patternSizeSetting = "ORBextractor.patternSize";
 int patternSizeOffset = 26;
 }
+//patternsize 8 fast thresholds: ini 8, min 2
 
 using namespace std;
 using namespace settings;
@@ -74,22 +75,13 @@ int main(int argc, char **argv)
     int mode = 2;
     for (; mode < 7; ++mode)
     {
-        if (mode == 3 || mode == 4 || mode == 5)
-            continue;
         replaceLine(settingsPath, distributionSetting, to_string(mode), distrOffset);
-
-        replaceLine(settingsPath, FASTiniThSetting, "10", FASTThOffset);
-        replaceLine(settingsPath, FASTminThSetting, "3", FASTThOffset);
-        replaceLine(settingsPath, patternSizeSetting, "8 ", patternSizeOffset);
-
         for (int i = 0; i < N; ++i)
             system(call.c_str());
 
-        replaceLine(settingsPath, patternSizeSetting, "12", patternSizeOffset);
+        replaceLine(settingsPath, scaleFSetting, "1.01", scaleFOffset);
         for (int i = 0; i < N; ++i)
             system(call.c_str());
-
-
 
         resetSettings(settingsPath);
     }

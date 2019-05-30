@@ -236,7 +236,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
     unsigned long maxDuration = 50000;
     std::chrono::high_resolution_clock::time_point funcExit = std::chrono::high_resolution_clock::now();
     auto funcDuration = std::chrono::duration_cast<std::chrono::microseconds>(funcExit-funcEntry).count();
-    assert(funcDuration <= maxDuration);
+    //assert(funcDuration <= maxDuration);
     if (funcDuration < maxDuration)
     {
         auto sleeptime = maxDuration - funcDuration;
