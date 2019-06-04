@@ -25,3 +25,4 @@ lib/
 trajectories/
 TEST*.yaml
 .*
+*_T.*

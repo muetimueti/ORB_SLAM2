@@ -105,9 +105,9 @@ public:
         return fast.GetScoreType();
     }
 
-    int inline GetnLevels()
+    int inline GetFeaturesNum()
     {
-        return nlevels;
+        return nfeatures;
     }
 
     std::vector<cv::Mat> mvImagePyramid;

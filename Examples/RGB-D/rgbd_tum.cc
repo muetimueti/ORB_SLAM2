@@ -125,7 +125,8 @@ int main(int argc, char **argv)
     Distribution::DistributionMethod d;
     d = SLAM.GetTracker()->GetLeftExtractor()->GetDistribution();
     int ptnsz = SLAM.GetTracker()->GetLeftExtractor()->GetPatternsize();
-    int nlvls = SLAM.GetTracker()->GetLeftExtractor()->GetnLevels();
+    int nlvls = SLAM.GetTracker()->GetLeftExtractor()->GetLevels();
+    int nFeatures = SLAM.GetTracker()->GetLeftExtractor()->GetFeaturesNum();
     float scalefac = SLAM.GetTracker()->GetLeftExtractor()->GetScaleFactor();
     string distributionName = GetDistributionName(d);
 
@@ -171,9 +172,9 @@ int main(int argc, char **argv)
     {
         ssC.str(string());
         ssK.str(string());
-        ssC << "trajectories/rgbd-tum/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
+        ssC << "trajectories/rgbd-tum/" << name << distributionName << "/" << to_string(nFeatures) << "_"
         << ("_"+to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << ".txt";
-        ssK << "trajectories/rgbd-tum/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
+        ssK << "trajectories/rgbd-tum/" << name << distributionName << "/" << to_string(nFeatures) << "_"
         << ("_"+to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << "-kt.txt";
         string sC = ssC.str();
         string sK = ssK.str();

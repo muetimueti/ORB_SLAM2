@@ -113,7 +113,8 @@ int main(int argc, char **argv)
     Distribution::DistributionMethod d;
     d = SLAM.GetTracker()->GetLeftExtractor()->GetDistribution();
     int ptnsz = SLAM.GetTracker()->GetLeftExtractor()->GetPatternsize();
-    int nlvls = SLAM.GetTracker()->GetLeftExtractor()->GetnLevels();
+    int nlvls = SLAM.GetTracker()->GetLeftExtractor()->GetLevels();
+    int nFeatures = SLAM.GetTracker()->GetLeftExtractor()->GetFeaturesNum();
     float scalefac = SLAM.GetTracker()->GetLeftExtractor()->GetScaleFactor();
     string distributionName = GetDistributionName(d);
 
@@ -157,7 +158,7 @@ int main(int argc, char **argv)
     for (int i = 1; i < 5000; ++i)
     {
         ssC.str(string());
-        ssC << "trajectories/stereo_kitti/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
+        ssC << "trajectories/stereo_kitti/" << name << distributionName << "/" << to_string(nFeatures) << "_"
             << ("_"+to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << ".txt";
         string sC = ssC.str();
         bool ex = (stat(sC.c_str(), &buf) == 0);
