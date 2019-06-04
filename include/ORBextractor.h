@@ -82,8 +82,8 @@ public:
 
     void inline SetPatternsize(int n)
     {
-        assert (n == 16 || n == 8 || n == 12);
-        patternsize = n;
+        if (n == 16 || n == 8 || n == 12)
+            patternsize = n;
     }
 
     int inline GetPatternsize()

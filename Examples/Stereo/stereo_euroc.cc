@@ -19,11 +19,13 @@
 */
 
 
-#include<iostream>
-#include<algorithm>
-#include<fstream>
-#include<iomanip>
-#include<chrono>
+#include <iostream>
+#include <algorithm>
+#include <fstream>
+#include <iomanip>
+#include <chrono>
+#include <sys/stat.h>
+#include <sstream>
 
 #include<opencv2/core/core.hpp>
 
@@ -33,6 +35,7 @@ using namespace std;
 
 void LoadImages(const string &strPathLeft, const string &strPathRight, const string &strPathTimes,
                 vector<string> &vstrImageLeft, vector<string> &vstrImageRight, vector<double> &vTimeStamps);
+string GetDistributionName(Distribution::DistributionMethod d);
 
 int main(int argc, char **argv)
 {
@@ -169,6 +172,13 @@ int main(int argc, char **argv)
             usleep((T-ttrack)*1e6);
     }
 
+    Distribution::DistributionMethod d;
+    d = SLAM.GetTracker()->GetLeftExtractor()->GetDistribution();
+    int ptnsz = SLAM.GetTracker()->GetLeftExtractor()->GetPatternsize();
+    int nlvls = SLAM.GetTracker()->GetLeftExtractor()->GetnLevels();
+    float scalefac = SLAM.GetTracker()->GetLeftExtractor()->GetScaleFactor();
+    string distributionName = GetDistributionName(d);
+
     // Stop all threads
     SLAM.Shutdown();
 
@@ -184,7 +194,43 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    SLAM.SaveTrajectoryTUM("CameraTrajectory.txt");
+    string name;
+    string delim = "/";
+    name = string(argv[3]);
+    int n = name.rfind(delim, name.length()-2);
+    cout << "\n" << name;
+    name = name.substr(n+1, name.length()-n-2);
+    name += "/";
+
+    stringstream ssC, ssK;
+
+    struct stat buf{};
+    string tem = "trajectories/stereo_euroc/";
+    tem += name;
+    tem += "/";
+    bool dex = (stat(tem.c_str(), &buf) == 0);
+    if (!dex) mkdir(tem.c_str(), S_IRWXU);
+
+    tem += distributionName;
+    tem += "/";
+    dex = (stat(tem.c_str(), &buf) == 0);
+    if (!dex) mkdir(tem.c_str(), S_IRWXU);
+
+    for (int i = 1; i < 5000; ++i)
+    {
+        ssC.str(string());
+        ssC << "trajectories/stereo_euroc/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
+            << ("_"+to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << ".txt";
+        string sC = ssC.str();
+        bool ex = (stat(sC.c_str(), &buf) == 0);
+        if (!ex)
+        {
+            SLAM.SaveTrajectoryTUM(sC);
+            break;
+        }
+        if (i == 4999)
+            cerr << "\nToo many trajectory files, would rather not write another one\n";
+    }
 
     return 0;
 }
@@ -213,4 +259,41 @@ void LoadImages(const string &strPathLeft, const string &strPathRight, const str
 
         }
     }
+}
+
+string GetDistributionName(Distribution::DistributionMethod d)
+{
+    using distr = Distribution::DistributionMethod;
+    string res;
+    switch(d)
+    {
+        case (distr::KEEP_ALL):
+            res.append("all_kept");
+            break;
+        case (distr::NAIVE):
+            res.append("topN");
+            break;
+        case (distr::QUADTREE):
+            res.append("quadtree");
+            break;
+        case (distr::QUADTREE_ORBSLAMSTYLE):
+            res.append("quadtree");
+            break;
+        case (distr::GRID):
+            res.append("bucketing");
+            break;
+        case (distr::ANMS_KDTREE):
+            res.append("KDT-ANMS");
+            break;
+        case (distr::ANMS_RT):
+            res.append("RT-ANMS");
+            break;
+        case (distr::SSC):
+            res.append("SSC");
+            break;
+        default:
+            res.append("unknown");
+            break;
+    }
+    return res;
 }

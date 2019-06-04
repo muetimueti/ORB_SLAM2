@@ -171,9 +171,9 @@ int main(int argc, char **argv)
     {
         ssC.str(string());
         ssK.str(string());
-        ssC << "trajectories/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
+        ssC << "trajectories/rgbd-tum/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
         << ("_"+to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << ".txt";
-        ssK << "trajectories/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
+        ssK << "trajectories/rgbd-tum/" << name << distributionName << "/" << ("ptn" + to_string(ptnsz))
         << ("_"+to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << "-kt.txt";
         string sC = ssC.str();
         string sK = ssK.str();
@@ -181,7 +181,7 @@ int main(int argc, char **argv)
         if (!ex)
         {
             SLAM.SaveTrajectoryTUM(sC);
-            //SLAM.SaveKeyFrameTrajectoryTUM(sK);
+            SLAM.SaveKeyFrameTrajectoryTUM(sK);
             break;
         }
         if (i == 4999)

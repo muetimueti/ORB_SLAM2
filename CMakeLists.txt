@@ -112,6 +112,6 @@ Examples/Monocular/mono_euroc.cc)
 target_link_libraries(mono_euroc ${PROJECT_NAME})
 
 add_executable(rgbd-wrapper
-Examples/RGB-D/rgbd-wrapper.cpp)
+        Examples/RGB-D/wrapper.cpp)
 target_link_libraries(rgbd-wrapper ${PROJECT_NAME})
 

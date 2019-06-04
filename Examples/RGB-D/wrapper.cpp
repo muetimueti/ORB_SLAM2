@@ -48,30 +48,44 @@ string GetDistributionName(Distribution::DistributionMethod d, FASTdetector::Sco
 
 int CallORB_SLAM2(char **argv);
 void replaceLine(string &path, string &toFind, string set, int offset);
-void resetSettings(string settingsPath);
+void resetSettings(string settingsPath, string program);
 
 
 int main(int argc, char **argv)
 {
-    if (argc != 6)
+    if (argc != 7)
     {
         cerr << "\nRequired args: ./rgbdwrapper path_to_vocabulary path_to_settings path_to_sequence "
-                "path_to_association number_of_iterations(int)\n";
+                "path_to_association <'rgbd'/'kitti'/'euroc'> number_of_iterations(int)\n";
         exit(EXIT_FAILURE);
     }
 
-    int N = stoi(argv[5]);
     string vocPath = string(argv[1]);
     string settingsPath = string(argv[2]);
     string sequencePath = string(argv[3]);
     string associationPath = string(argv[4]);
+    string program = string(argv[5]);
+    int N = stoi(argv[6]);
 
 
+    string rgbdcall = "(cd /home/ralph/CLionProjects/ORB_SLAM2/ && exec Examples/RGB-D/rgbd_tum ";
+    rgbdcall += vocPath + " " + settingsPath + " " + sequencePath + " " + associationPath + ")";
 
-    string call = "(cd /home/ralph/CLionProjects/ORB_SLAM2/ && exec Examples/RGB-D/rgbd_tum ";
-    call += vocPath + " " + settingsPath + " " + sequencePath + " " + associationPath + ")";
+    string kitticall = "(cd /home/ralph/CLionProjects/ORB_SLAM2/ && exec Examples/Stereo/stereo_kitti ";
+    kitticall += vocPath + " " + settingsPath + " " + sequencePath + ")";
 
-    resetSettings(settingsPath);
+    string euroccall = "(cd /home/ralph/CLionProjects/ORB_SLAM2/ && exec Examples/Stereo/stereo_euroc ";
+    euroccall += vocPath + " " + settingsPath + " " + sequencePath + " " + associationPath + ")";
+
+    string call;
+    if (program == "rgbd")
+        call = rgbdcall;
+    else if (program == "kitti")
+        call = kitticall;
+    else
+        call = euroccall;
+
+    resetSettings(settingsPath, program);
     int mode = 2;
     for (; mode < 7; ++mode)
     {
@@ -79,11 +93,17 @@ int main(int argc, char **argv)
         for (int i = 0; i < N; ++i)
             system(call.c_str());
 
-        replaceLine(settingsPath, scaleFSetting, "1.01", scaleFOffset);
+        //replaceLine(settingsPath, FASTiniThSetting, "16", FASTThOffset);
+        //replaceLine(settingsPath, FASTminThSetting, "5", FASTThOffset);
+        replaceLine(settingsPath, scaleFSetting, "1.05", scaleFOffset);
         for (int i = 0; i < N; ++i)
             system(call.c_str());
 
-        resetSettings(settingsPath);
+        //replaceLine(settingsPath, scaleFSetting, "1.01", scaleFOffset);
+        //for (int i = 0; i < N; ++i)
+        //    system(call.c_str());
+
+        resetSettings(settingsPath, program);
     }
 }
 
@@ -116,11 +136,12 @@ void replaceLine(string &path, string &toFind, string set, int offset)
     tempFile.close();
 }
 
-void resetSettings(string settingsPath)
+void resetSettings(string settingsPath, string program)
 {
     cout << "\nResetting settingsfile:\n";
-    replaceLine(settingsPath, nfeatSetting, "1000", nfeatOffset);
-    replaceLine(settingsPath, scaleFSetting, "1.2", scaleFOffset);
+    int nFeatures = program == "kitti" ? 2000 : program == "rgbd" ? 1000 : 1200;
+    replaceLine(settingsPath, nfeatSetting, to_string(nFeatures), nfeatOffset);
+    replaceLine(settingsPath, scaleFSetting, "1.20", scaleFOffset);
     replaceLine(settingsPath, nLevelsSetting, "8", nLevelsOffset);
     replaceLine(settingsPath, FASTiniThSetting, "20", FASTThOffset);
     replaceLine(settingsPath, FASTminThSetting, "7", FASTThOffset);
