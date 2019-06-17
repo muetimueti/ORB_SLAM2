@@ -159,12 +159,16 @@ int main(int argc, char **argv)
     {
         ssC.str(string());
         ssC << "trajectories/stereo_kitti/" << name << distributionName << "/" << to_string(nFeatures) << "_"
-            << ("_"+to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << ".txt";
+            << (to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i);
         string sC = ssC.str();
+        string sK = sC;
+        sC += ".txt";
         bool ex = (stat(sC.c_str(), &buf) == 0);
         if (!ex)
         {
             SLAM.SaveTrajectoryKITTI(sC);
+            sK += "_KT.txt";
+            SLAM.SaveKeyFrameTrajectoryTUM(sK);
             break;
         }
         if (i == 4999)

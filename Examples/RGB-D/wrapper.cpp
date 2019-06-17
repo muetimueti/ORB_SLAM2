@@ -75,7 +75,7 @@ int main(int argc, char **argv)
     kitticall += vocPath + " " + settingsPath + " " + sequencePath + ")";
 
     string euroccall = "(cd /home/ralph/CLionProjects/ORB_SLAM2/ && exec Examples/Stereo/stereo_euroc ";
-    euroccall += vocPath + " " + settingsPath + " " + sequencePath + " " + associationPath + ")";
+    euroccall += vocPath + " " + settingsPath + " " + sequencePath + " " + associationPath + " " + program + ")";
 
     string call;
     if (program == "rgbd")
@@ -86,22 +86,17 @@ int main(int argc, char **argv)
         call = euroccall;
 
     resetSettings(settingsPath, program);
-    int mode = 2;
+    int mode = 6;
     for (; mode < 7; ++mode)
     {
         replaceLine(settingsPath, distributionSetting, to_string(mode), distrOffset);
-        for (int i = 0; i < N; ++i)
-            system(call.c_str());
-
-        //replaceLine(settingsPath, FASTiniThSetting, "16", FASTThOffset);
-        //replaceLine(settingsPath, FASTminThSetting, "5", FASTThOffset);
+        replaceLine(settingsPath, nfeatSetting, "1500", nfeatOffset);
         replaceLine(settingsPath, scaleFSetting, "1.05", scaleFOffset);
+        replaceLine(settingsPath, nLevelsSetting, "5", nLevelsOffset);
+        replaceLine(settingsPath, FASTiniThSetting, "10", FASTThOffset);
+        replaceLine(settingsPath, FASTminThSetting, "4", FASTThOffset);
         for (int i = 0; i < N; ++i)
             system(call.c_str());
-
-        //replaceLine(settingsPath, scaleFSetting, "1.01", scaleFOffset);
-        //for (int i = 0; i < N; ++i)
-        //    system(call.c_str());
 
         resetSettings(settingsPath, program);
     }

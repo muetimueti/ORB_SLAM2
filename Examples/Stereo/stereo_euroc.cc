@@ -220,13 +220,16 @@ int main(int argc, char **argv)
     for (int i = 1; i < 5000; ++i)
     {
         ssC.str(string());
-        ssC << "trajectories/stereo_euroc/" << name << distributionName << "/" << ("_"+to_string(nlvls)+"l_") <<
-            to_string(nFeatures) << "_" << to_string(scalefac) << "_" << to_string(i) << ".txt";
+        ssC << "trajectories/stereo_euroc/" << name << distributionName << "/"  << to_string(nFeatures) << "_"
+            << (to_string(nlvls)+"l_") << "_" << to_string(scalefac) << "_" << to_string(i);
         string sC = ssC.str();
+        string sK = sC + "_KT.txt";
+        sC += ".txt";
         bool ex = (stat(sC.c_str(), &buf) == 0);
         if (!ex)
         {
             SLAM.SaveTrajectoryTUM(sC);
+            SLAM.SaveKeyFrameTrajectoryTUM(sK);
             break;
         }
         if (i == 4999)

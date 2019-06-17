@@ -7,7 +7,7 @@
 #include "include/ORBextractor.h"
 #include "include/ORBconstants.h"
 
-#define MYFAST 0
+#define MYFAST 1
 #define ENABLE_MAX_DURATION 1
 
 

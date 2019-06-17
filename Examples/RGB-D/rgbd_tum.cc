@@ -157,7 +157,7 @@ int main(int argc, char **argv)
     stringstream ssC, ssK;
 
     struct stat buf{};
-    string tem = "trajectories/";
+    string tem = "trajectories/rgbd_tum/";
     tem += name;
     tem += "/";
     bool dex = (stat(tem.c_str(), &buf) == 0);
@@ -172,10 +172,10 @@ int main(int argc, char **argv)
     {
         ssC.str(string());
         ssK.str(string());
-        ssC << "trajectories/rgbd-tum/" << name << distributionName << "/" << to_string(nFeatures) << "_"
-        << ("_"+to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << ".txt";
-        ssK << "trajectories/rgbd-tum/" << name << distributionName << "/" << to_string(nFeatures) << "_"
-        << ("_"+to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << "-kt.txt";
+        ssC << "trajectories/rgbd_tum/" << name << distributionName << "/" << to_string(nFeatures) << "_"
+        << (to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << ".txt";
+        ssK << "trajectories/rgbd_tum/" << name << distributionName << "/" << to_string(nFeatures) << "_"
+        << (to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << "_KT.txt";
         string sC = ssC.str();
         string sK = ssK.str();
         bool ex = (stat(sC.c_str(), &buf) == 0);

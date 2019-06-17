@@ -550,9 +550,10 @@ void Distribution::DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, cons
     //std::sort(kpts.begin(), kpts.end(), [](const cv::KeyPoint &a, const cv::KeyPoint &b){return (a.pt.x < b.pt.x ||
     //        (a.pt.x == b.pt.x && a.pt.y < b.pt.y));});
 
-    int cellSize = 80;
     const float width = maxX - minX;
     const float height = maxY - minY;
+
+    int cellSize = (int)std::min(80.f, std::min(width, height));
 
     const int npatchesInX = width / cellSize;
     const int npatchesInY = height / cellSize;
@@ -577,71 +578,9 @@ void Distribution::DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, cons
 
     for (auto &kptVec : cellkpts)
     {
-        //std::cout << "\nsz of curr cell = " << kptVec.size();
-        RetainBestN(kptVec, nPerCell);
-        kpts.insert(kpts.end(), kptVec.begin(), kptVec.end());
-        //std::cout << "\nsz of curr cell after retain = " << kptVec.size();
-    }
-
-
-
-#if 0
-    //TODO: test
-    const int width = maxX - minX;
-    const int height = maxY - minY;
-
-    int cellCols = 20;
-    int cellRows = 20;
-    if (width > height)
-        cellCols *= (int)((float)width / (float)height);
-    else
-        cellRows *= (int)((float)height / (float)width);
-
-
-    const int cellWidth = std::ceil(width / cellCols);
-    const int cellHeight = std::ceil(height / cellRows);
-
-
-
-
-
-    const int nCells = cellCols * cellRows;
-    int nPerCell = ceil((float)N / nCells);
-
-    std::vector<std::vector<cv::KeyPoint>> cellkpts(nCells);
-
-    for (auto &kptVec : cellkpts)
-    {
-        kptVec.clear();
-        kptVec.reserve(kpts.size());
-    }
-
-
-    /*
-    std::cout << "\n\nDims: x between " << cv::Point(minX, maxX) << ", y between " << cv::Point(minY, maxY) <<
-        "\ncellCols=" << cellCols << ", cellRows=" << cellRows
-        << ", cellWidth=" << cellWidth << ", cellHeight=" << cellHeight << "\nN per Cell = " << ceil(N / nCells) <<
-        ", nCells = " << nCells << ", N = " << N << "\n\n";
-    */
-
-    for (auto &kpt : kpts)
-    {
-        int idx = (int)(kpt.pt.y/cellHeight) * cellCols + (int)(kpt.pt.x/cellWidth);
-        if (idx >= nCells)
-            idx = nCells-1;
-        //std::cout << "cell-idx of kpt " << kpt.pt <<" would be: " << idx << "\n";
-        cellkpts[idx].emplace_back(kpt);
-    }
-
-    kpts.clear();
-    kpts.reserve(N);
-
-    for (auto &kptVec : cellkpts)
-    {
         RetainBestN(kptVec, nPerCell);
         kpts.insert(kpts.end(), kptVec.begin(), kptVec.end());
     }
-#endif
 }
 
 /*
