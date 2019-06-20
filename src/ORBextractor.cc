@@ -48,7 +48,7 @@ float ORBextractor::IntensityCentroidAngle(const uchar* pointer, int step)
 ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels, int _iniThFAST, int _minThFAST):
         nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels), iniThFAST(_iniThFAST),
         minThFAST(_minThFAST), patternsize(16), kptDistribution(Distribution::DistributionMethod::SSC),
-        distributePerLevel(true), fast(_iniThFAST, _minThFAST, _nlevels)
+        distributePerLevel(true), softSSCThreshold(0), fast(_iniThFAST, _minThFAST, _nlevels)
 {
     mvScaleFactor.resize(nlevels);
     mvInvScaleFactor.resize(nlevels);
@@ -173,7 +173,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
             temp.insert(temp.end(), allkpts[lvl].begin(), allkpts[lvl].end());
         }
         Distribution::DistributeKeypoints(temp, 0, mvImagePyramid[0].cols, 0, mvImagePyramid[0].rows,
-                                          nfeatures, kptDistribution);
+                                          nfeatures, kptDistribution, softSSCThreshold);
 
         for (lvl = 0; lvl < nlevels; ++lvl)
             allkpts[lvl].clear();
@@ -391,7 +391,7 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
 
             if (distributePerLevel)
                 Distribution::DistributeKeypoints(levelKpts, minimumX, maximumX, minimumY, maximumY,
-                                                  nfeaturesPerLevelVec[lvl], mode);
+                                                  nfeaturesPerLevelVec[lvl], mode, softSSCThreshold);
 
 
             allkpts[lvl] = levelKpts;
@@ -518,7 +518,7 @@ void ORBextractor::DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allkpts
 
             if (distributePerLevel)
                 Distribution::DistributeKeypoints(levelKpts, minimumX, maximumX, minimumY, maximumY,
-                                                  nfeaturesPerLevelVec[lvl], mode);
+                                                  nfeaturesPerLevelVec[lvl], mode, softSSCThreshold);
 
 
             allkpts[lvl] = levelKpts;

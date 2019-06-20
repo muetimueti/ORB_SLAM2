@@ -25,13 +25,13 @@ static void RetainBestN(std::vector<cv::KeyPoint> &kpts, int N)
 
 void
 Distribution::DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int minX, const int maxX, const int minY,
-                                  const int maxY, const int N, DistributionMethod mode)
+                                  const int maxY, const int N, DistributionMethod mode, int softSSCThreshold)
 {
     if (kpts.size() <= N)
         return;
     const float epsilon = 0.1;
 
-    if (mode == ANMS_RT || mode == ANMS_KDTREE || mode == SSC)
+    if (mode == ANMS_RT || mode == ANMS_KDTREE || mode == SSC || mode == RANMS || mode == SOFT_SSC)
     {
         std::vector<int> responseVector;
         for (int i = 0; i < kpts.size(); i++)
@@ -50,9 +50,9 @@ Distribution::DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int min
             DistributeKeypointsNaive(kpts, N);
             break;
         }
-        case QUADTREE :
+        case RANMS :
         {
-            DistributeKeypointsQuadTree_ORBSLAMSTYLE(kpts, minX, maxX, minY, maxY, N);
+            DistributeKeypointsRANMS(kpts, minX, maxX, minY, maxY, N, epsilon, softSSCThreshold);
             break;
         }
         case QUADTREE_ORBSLAMSTYLE :
@@ -85,10 +85,17 @@ Distribution::DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int min
         }
         case SSC :
         {
+            //TODO: fix 8th distribution not working for some reason
             int cols = maxX - minX;
             int rows = maxY - minY;
-            DistributeKeypointsSSC(kpts, rows, cols, N, epsilon);
+            DistributeKeypointsSoftSSC(kpts, rows, cols, N, epsilon, softSSCThreshold);
             break;
+        }
+        case SOFT_SSC :
+        {
+            int cols = maxX - minX;
+            int rows = maxY - minY;
+            DistributeKeypointsSoftSSC(kpts, rows, cols, N, epsilon, 0);
         }
         default:
         {
@@ -562,7 +569,7 @@ void Distribution::DistributeKeypointsGrid(std::vector<cv::KeyPoint>& kpts, cons
 
     int nCells = npatchesInX * npatchesInY;
     std::vector<std::vector<cv::KeyPoint>> cellkpts(nCells);
-    int nPerCell = std::floor((float)N / nCells);
+    int nPerCell = (float)N / nCells;
 
 
     for (auto &kpt : kpts)
@@ -812,6 +819,216 @@ void Distribution::DistributeKeypointsSSC(std::vector<cv::KeyPoint> &kpts, int r
                     {
                         if (!covered[dy][dx])
                             covered[dy][dx] = true;
+                    }
+                }
+            }
+        }
+        if (tempResult.size() >= kMin && tempResult.size() <= kMax)
+        {
+            resultIndices = tempResult;
+            done = true;
+        }
+        else if (tempResult.size() < kMin)
+            high = width - 1;
+        else
+            low = width + 1;
+
+        prevwidth = width;
+    }
+
+    std::vector<cv::KeyPoint> reskpts;
+    for (int i = 0; i < resultIndices.size(); ++i)
+    {
+        reskpts.emplace_back(kpts[resultIndices[i]]);
+    }
+    kpts = reskpts;
+}
+
+
+void Distribution::DistributeKeypointsRANMS(std::vector<cv::KeyPoint> &kpts, int minX, int maxX, int minY, int maxY,
+        int N, float epsilon, int softSSCThreshold)
+{
+    const float width = maxX - minX;
+    const float height = maxY - minY;
+    int cellSize = (int)std::min((float)80, std::min(width, height));
+
+    const int npatchesInX = width / cellSize;
+    const int npatchesInY = height / cellSize;
+    const int patchWidth = ceil(width / npatchesInX);
+    const int patchHeight = ceil(height / npatchesInY);
+
+    int nCells = npatchesInX * npatchesInY;
+    std::vector<std::vector<cv::KeyPoint>> cellkpts(nCells);
+    int nPerCell = (float)N / nCells;
+
+
+    for (auto &kpt : kpts)
+    {
+        int idx = (int)(kpt.pt.y/patchHeight) * npatchesInX + (int)(kpt.pt.x/patchWidth);
+        if (idx >= nCells)
+            idx = nCells-1;
+        cellkpts[idx].emplace_back(kpt);
+    }
+
+    kpts.clear();
+    kpts.reserve(N*2);
+
+    for (int i = 0; i < nCells; ++i)
+    {
+        int cellMinX = (i%npatchesInX) * patchWidth;
+        int cellMaxX = cellMinX + patchWidth;
+        int cellMinY = i/npatchesInX * patchHeight;
+        int cellMaxY = cellMinY + patchHeight;
+        if (nPerCell < cellkpts[i].size())
+            SSCperCell(cellkpts[i], cellMinX, cellMaxX, cellMinY, cellMaxY, nPerCell, epsilon,
+                                       softSSCThreshold);
+        kpts.insert(kpts.end(), cellkpts[i].begin(), cellkpts[i].end());
+    }
+}
+
+
+void Distribution::SSCperCell(std::vector<cv::KeyPoint> &kpts, const int minX, const int maxX,
+        const int minY, const int maxY, int N, float epsilon, float threshold)
+{
+    int cols = maxX - minX;
+    int rows = maxY - minY;
+    int numerator1 = rows + cols + 2*N;
+    long long discriminant = (long long)4*cols + (long long)4*N + (long long)4*rows*N +
+                             (long long)rows*rows + (long long)cols*cols - (long long)2*cols*rows + (long long)4*cols*rows*N;
+
+    double denominator = 2*(N-1);
+
+    double sol1 = (numerator1 - sqrt(discriminant))/denominator;
+    double sol2 = (numerator1 + sqrt(discriminant))/denominator;
+
+    int high = (sol1>sol2)? sol1 : sol2;
+    int low = floor(sqrt((double)kpts.size()/N));
+
+    bool done = false;
+    int kMin = myRound(N - N*epsilon), kMax = myRound(N + N*epsilon);
+    std::vector<int> resultIndices;
+    int width, prevwidth = -1;
+
+    std::vector<int> tempResult;
+    tempResult.reserve(kpts.size());
+
+    while(!done)
+    {
+        width = low + (high-low)/2;
+        if (width == prevwidth || low > high)
+        {
+            resultIndices = tempResult;
+            break;
+        }
+        tempResult.clear();
+        double c = (double)width/2.0;
+        int cellCols = std::floor(cols/c);
+        int cellRows = std::floor(rows/c);
+        std::vector<std::vector<float>> covered(cellRows+1, std::vector<float>(cellCols+1, -1));
+
+        for (int i = 0; i < kpts.size(); ++i)
+        {
+            int row = (int)((kpts[i].pt.y-minY)/c);
+            int col = (int)((kpts[i].pt.x-minX)/c);
+            int score = kpts[i].response;
+
+            if (covered[row][col] < score - threshold)
+            {
+                tempResult.emplace_back(i);
+                int rowMin = row - (int)(width/c) >= 0 ? (row - (int)(width/c)) : 0;
+                int rowMax = row + (int)(width/c) <= cellRows ? (row + (int)(width/c)) : cellRows;
+                int colMin = col - (int)(width/c) >= 0 ? (col - (int)(width/c)) : 0;
+                int colMax = col + (int)(width/c) <= cellCols ? (col + (int)(width/c)) : cellCols;
+
+                for (int dy = rowMin; dy <= rowMax; ++dy)
+                {
+                    for (int dx = colMin; dx <= colMax; ++dx)
+                    {
+                        if (covered[dy][dx] < score)
+                            covered[dy][dx] = score;
+                    }
+                }
+            }
+        }
+        if (tempResult.size() >= kMin && tempResult.size() <= kMax)
+        {
+            resultIndices = tempResult;
+            done = true;
+        }
+        else if (tempResult.size() < kMin)
+            high = width - 1;
+        else
+            low = width + 1;
+
+        prevwidth = width;
+    }
+
+    std::vector<cv::KeyPoint> reskpts;
+    for (int i = 0; i < resultIndices.size(); ++i)
+    {
+        reskpts.emplace_back(kpts[resultIndices[i]]);
+    }
+    kpts = reskpts;
+}
+
+
+void Distribution::DistributeKeypointsSoftSSC(std::vector<cv::KeyPoint> &kpts, int rows, int cols, int N,
+                                              float epsilon, float threshold)
+{
+    int numerator1 = rows + cols + 2*N;
+    long long discriminant = (long long)4*cols + (long long)4*N + (long long)4*rows*N +
+                             (long long)rows*rows + (long long)cols*cols - (long long)2*cols*rows + (long long)4*cols*rows*N;
+
+    double denominator = 2*(N-1);
+
+    double sol1 = (numerator1 - sqrt(discriminant))/denominator;
+    double sol2 = (numerator1 + sqrt(discriminant))/denominator;
+
+    int high = (sol1>sol2)? sol1 : sol2;
+    int low = floor(sqrt((double)kpts.size()/N));
+
+    bool done = false;
+    int kMin = myRound(N - N*epsilon), kMax = myRound(N + N*epsilon);
+    std::vector<int> resultIndices;
+    int width, prevwidth = -1;
+
+    std::vector<int> tempResult;
+    tempResult.reserve(kpts.size());
+
+    while(!done)
+    {
+        width = low + (high-low)/2;
+        if (width == prevwidth || low > high)
+        {
+            resultIndices = tempResult;
+            break;
+        }
+        tempResult.clear();
+        double c = (double)width/2.0;
+        int cellCols = std::floor(cols/c);
+        int cellRows = std::floor(rows/c);
+        std::vector<std::vector<float>> covered(cellRows+1, std::vector<float>(cellCols+1, -1));
+
+        for (int i = 0; i < kpts.size(); ++i)
+        {
+            int row = (int)(kpts[i].pt.y/c);
+            int col = (int)(kpts[i].pt.x/c);
+            int score = kpts[i].response;
+
+            if (covered[row][col] < score - threshold)
+            {
+                tempResult.emplace_back(i);
+                int rowMin = row - (int)(width/c) >= 0 ? (row - (int)(width/c)) : 0;
+                int rowMax = row + (int)(width/c) <= cellRows ? (row + (int)(width/c)) : cellRows;
+                int colMin = col - (int)(width/c) >= 0 ? (col - (int)(width/c)) : 0;
+                int colMax = col + (int)(width/c) <= cellCols ? (col + (int)(width/c)) : cellCols;
+
+                for (int dy = rowMin; dy <= rowMax; ++dy)
+                {
+                    for (int dx = colMin; dx <= colMax; ++dx)
+                    {
+                        if (covered[dy][dx] < score)
+                            covered[dy][dx] = score;
                     }
                 }
             }

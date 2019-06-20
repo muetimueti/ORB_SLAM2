@@ -124,11 +124,15 @@ int main(int argc, char **argv)
 
     Distribution::DistributionMethod d;
     d = SLAM.GetTracker()->GetLeftExtractor()->GetDistribution();
-    int ptnsz = SLAM.GetTracker()->GetLeftExtractor()->GetPatternsize();
+    //int ptnsz = SLAM.GetTracker()->GetLeftExtractor()->GetPatternsize();
     int nlvls = SLAM.GetTracker()->GetLeftExtractor()->GetLevels();
     int nFeatures = SLAM.GetTracker()->GetLeftExtractor()->GetFeaturesNum();
     float scalefac = SLAM.GetTracker()->GetLeftExtractor()->GetScaleFactor();
     string distributionName = GetDistributionName(d);
+    string addInfo;
+    addInfo = (d == Distribution::SSC || d == Distribution::RANMS) ?
+              (to_string(SLAM.GetTracker()->GetLeftExtractor()->GetSoftSSCThreshold())+"Th")
+                                                                   : "";
 
 
     // Stop all threads
@@ -173,7 +177,7 @@ int main(int argc, char **argv)
         ssC.str(string());
         ssK.str(string());
         ssC << "trajectories/rgbd_tum/" << name << distributionName << "/" << to_string(nFeatures) << "_"
-        << (to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << ".txt";
+        << (to_string(nlvls)+"l_") << to_string(scalefac) << "_" << addInfo << "_" << to_string(i) << ".txt";
         ssK << "trajectories/rgbd_tum/" << name << distributionName << "/" << to_string(nFeatures) << "_"
         << (to_string(nlvls)+"l_") << to_string(scalefac) << "_" << to_string(i) << "_KT.txt";
         string sC = ssC.str();
@@ -231,8 +235,8 @@ string GetDistributionName(Distribution::DistributionMethod d)
         case (distr::NAIVE):
             res.append("topN");
             break;
-        case (distr::QUADTREE):
-            res.append("quadtree");
+        case (distr::RANMS):
+            res.append("ranms");
             break;
         case (distr::QUADTREE_ORBSLAMSTYLE):
             res.append("quadtree");
@@ -248,6 +252,9 @@ string GetDistributionName(Distribution::DistributionMethod d)
             break;
         case (distr::SSC):
             res.append("SSC");
+            break;
+        case (distr::SOFT_SSC):
+            res.append("SoftSSC");
             break;
         default:
             res.append("unknown");

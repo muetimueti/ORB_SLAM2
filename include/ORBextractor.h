@@ -110,6 +110,15 @@ public:
         return nfeatures;
     }
 
+    void inline SetSoftSSCThreshold(int th)
+    {
+        softSSCThreshold = std::max(std::min(th, 100), 0);
+    }
+    int inline GetSoftSSCThreshold()
+    {
+        return softSSCThreshold;
+    }
+
     std::vector<cv::Mat> mvImagePyramid;
 
 protected:
@@ -129,7 +138,7 @@ protected:
     void ComputeScalePyramid(cv::Mat &image);
 
     void DivideAndFAST(std::vector<std::vector<cv::KeyPoint>> &allKeypoints,
-                       Distribution::DistributionMethod mode = Distribution::QUADTREE,
+                       Distribution::DistributionMethod mode,
                        bool divideImage = true, int cellSize = 30, bool distributePerLevel = false);
 
     void ComputeAngles(std::vector<std::vector<cv::KeyPoint>> &allkpts);
@@ -151,6 +160,8 @@ protected:
     Distribution::DistributionMethod kptDistribution;
 
     bool distributePerLevel;
+
+    int softSSCThreshold;
 
     std::vector<int> pixelOffset;
 

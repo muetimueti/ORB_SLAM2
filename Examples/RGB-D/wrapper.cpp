@@ -29,6 +29,8 @@ string nLevelsSetting = "ORBextractor.nLevels";
 int nLevelsOffset = 22;
 string patternSizeSetting = "ORBextractor.patternSize";
 int patternSizeOffset = 26;
+string softThSetting = "ORBextractor.softSSCThreshold";
+int softThOffset = 31;
 }
 //patternsize 8 fast thresholds: ini 8, min 2
 
@@ -37,7 +39,6 @@ using namespace settings;
 
 void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
                 vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
-string GetDistributionName(Distribution::DistributionMethod d, FASTdetector::ScoreType s);
 
 /**
  * @param argc needs to be 6
@@ -46,7 +47,6 @@ string GetDistributionName(Distribution::DistributionMethod d, FASTdetector::Sco
  * @return
  */
 
-int CallORB_SLAM2(char **argv);
 void replaceLine(string &path, string &toFind, string set, int offset);
 void resetSettings(string settingsPath, string program);
 
@@ -86,17 +86,20 @@ int main(int argc, char **argv)
         call = euroccall;
 
     resetSettings(settingsPath, program);
-    int mode = 6;
-    for (; mode < 7; ++mode)
+    int mode = 1;
+    for (; mode < 2; ++mode)
     {
         replaceLine(settingsPath, distributionSetting, to_string(mode), distrOffset);
         replaceLine(settingsPath, nfeatSetting, "1500", nfeatOffset);
         replaceLine(settingsPath, scaleFSetting, "1.05", scaleFOffset);
         replaceLine(settingsPath, nLevelsSetting, "5", nLevelsOffset);
-        replaceLine(settingsPath, FASTiniThSetting, "10", FASTThOffset);
-        replaceLine(settingsPath, FASTminThSetting, "4", FASTThOffset);
-        for (int i = 0; i < N; ++i)
-            system(call.c_str());
+        for (int i = 7; i < 31; ++i)
+        {
+            replaceLine(settingsPath, softThSetting, to_string(i), softThOffset);
+            for (int i = 0; i < N; ++i)
+                system(call.c_str());
+        }
+
 
         resetSettings(settingsPath, program);
     }

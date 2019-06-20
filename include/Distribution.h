@@ -25,17 +25,18 @@ public:
     enum DistributionMethod
     {
     NAIVE = 0,
-    QUADTREE = 1,
+    RANMS = 1,
     QUADTREE_ORBSLAMSTYLE = 2,
     GRID = 3,
     ANMS_KDTREE = 4,
     ANMS_RT = 5,
     SSC = 6,
-    KEEP_ALL = 7
+    KEEP_ALL = 7,
+    SOFT_SSC = 8
     };
 
     static void DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, int minX, int maxX, int minY,
-                                    int maxY, int N, DistributionMethod mode);
+                                    int maxY, int N, DistributionMethod mode, int softSSCThreshold = 0);
 
 protected:
 
@@ -56,6 +57,14 @@ protected:
 
     static void DistributeKeypointsSSC(std::vector<cv::KeyPoint> &kpts, int rows, int cols, int N, float epsilon);
 
+    static void DistributeKeypointsRANMS(std::vector<cv::KeyPoint> &kpts, int minX, int maxX, int minY, int maxY, int N,
+            float epsilon, int softSSCThreshold);
+
+    static void SSCperCell(std::vector<cv::KeyPoint> &kpts, const int minX, const int maxX,
+                           const int minY, const int maxY, int N, float epsilon, float threshold);
+
+    static void DistributeKeypointsSoftSSC(std::vector<cv::KeyPoint> &kpts, int rows, int cols, int N,
+                                                         float epsilon, float threshold);
 };
 
 template <typename T>

@@ -119,12 +119,14 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     int distributePerLevel = fSettings["ORBextractor.distributePerLevel"];
     int scoreType = fSettings["ORBextractor.scoreType"];
     int patternSize = fSettings["ORBextractor.patternSize"];
+    int softSSCTh = fSettings["ORBextractor.softSSCThreshold"];
 
 
     mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
     mpORBextractorLeft->SetDistribution(mode);
     mpORBextractorLeft->SetDistributionPerLevel((bool)distributePerLevel);
     mpORBextractorLeft->SetScoreType(static_cast<FASTdetector::ScoreType>(scoreType));
+    mpORBextractorLeft->SetSoftSSCThreshold(softSSCTh);
     if (patternSize != 16)
         mpORBextractorLeft->SetPatternsize(patternSize);
 
@@ -140,6 +142,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     cout << "- Scale Factor: " << fScaleFactor << endl;
     cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
     cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
+    cout << "- Distribution: " << mode << endl;
 
     if(sensor==System::STEREO || sensor==System::RGBD)
     {

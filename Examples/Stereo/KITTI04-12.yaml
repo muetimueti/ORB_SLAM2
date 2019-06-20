@@ -35,26 +35,26 @@ ThDepth: 40
 #--------------------------------------------------------------------------------------------
 
 # ORB Extractor: Number of features per image
-ORBextractor.nFeatures: 2000
+ORBextractor.nFeatures: 1500
 
 # ORB Extractor: Scale factor between levels in the scale pyramid 	
-ORBextractor.scaleFactor: 1.2
+ORBextractor.scaleFactor: 1.05
 
 # ORB Extractor: Number of levels in the scale pyramid	
-ORBextractor.nLevels: 8
+ORBextractor.nLevels: 5
 
 # ORB Extractor: Fast threshold
 # Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
 # Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
 # You can lower these values if your images have low contrast			
-ORBextractor.iniThFAST: 12
+ORBextractor.iniThFAST: 20
 ORBextractor.minThFAST: 7
 
 #ORB Extractor: Keypoint distribution
 # Select between various good and not-so-good methods for distributing Keypoints:
-# 0=TopN, 1=Quadtree, 2=Quadtree (Orbslam), 3=Bucketing, 4=ANMS via KDTree, 5=ANMS via Range Tree,
-# 6=Suppression via Square Covering (SSC), 7=Keep all Keypoints (not recommended)
-ORBextractor.distribution: 2
+# 0=TopN, 1=RANMS, 2=Quadtree, 3=Bucketing, 4=ANMS via KDTree, 5=ANMS via Range Tree,
+# 6=Suppression via Square Covering (SSC), 7=Keep all Keypoints, 8=Soft SSC
+ORBextractor.distribution: 6
 
 #ORB Extractor: Set wehther to distribute keypoints per octave
 # If set to true(1), keypoints will be distributed per image octave
@@ -68,6 +68,8 @@ ORBextractor.scoreType: 0
 #ORB Extractor: Patternsize for FAST detection
 # legal values: 8, 12, 16
 ORBextractor.patternSize: 16
+
+ORBextractor.softSSCThreshold: 0
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters
