@@ -87,19 +87,15 @@ int main(int argc, char **argv)
 
     resetSettings(settingsPath, program);
     int mode = 1;
-    for (; mode < 2; ++mode)
+    for (; mode < 4; ++mode)
     {
         replaceLine(settingsPath, distributionSetting, to_string(mode), distrOffset);
-        replaceLine(settingsPath, nfeatSetting, "1500", nfeatOffset);
+        replaceLine(settingsPath, nfeatSetting, "800", nfeatOffset);
         replaceLine(settingsPath, scaleFSetting, "1.05", scaleFOffset);
         replaceLine(settingsPath, nLevelsSetting, "5", nLevelsOffset);
-        for (int i = 7; i < 31; ++i)
-        {
-            replaceLine(settingsPath, softThSetting, to_string(i), softThOffset);
-            for (int i = 0; i < N; ++i)
-                system(call.c_str());
-        }
-
+        replaceLine(settingsPath, softThSetting, "15", softThOffset);
+        for (int i = 0; i < N; ++i)
+            system(call.c_str());
 
         resetSettings(settingsPath, program);
     }
@@ -124,7 +120,10 @@ void replaceLine(string &path, string &toFind, string set, int offset)
         int k = line.find(toFind);
         if (k != string::npos)
         {
-            line.replace(offset, set.size(), set);
+            //line.replace(offset, set.size(), set);
+            string newline = line.substr(0, offset);
+            newline += set;
+            line = newline;
         }
         tempFile << line << "\n";
     }
