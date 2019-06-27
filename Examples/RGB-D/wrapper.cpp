@@ -85,17 +85,28 @@ int main(int argc, char **argv)
     else
         call = euroccall;
 
+
     resetSettings(settingsPath, program);
-    int mode = 1;
-    for (; mode < 4; ++mode)
+    int mode = 2;
+    for (; mode < 3; ++mode)
     {
         replaceLine(settingsPath, distributionSetting, to_string(mode), distrOffset);
-        replaceLine(settingsPath, nfeatSetting, "800", nfeatOffset);
-        replaceLine(settingsPath, scaleFSetting, "1.05", scaleFOffset);
+        replaceLine(settingsPath, nfeatSetting, "1500", nfeatOffset);
+        replaceLine(settingsPath, scaleFSetting, "1.10", scaleFOffset);
         replaceLine(settingsPath, nLevelsSetting, "5", nLevelsOffset);
-        replaceLine(settingsPath, softThSetting, "15", softThOffset);
+        if (mode == 1)
+            replaceLine(settingsPath, softThSetting, "30", softThOffset);
+        if (mode == 6)
+            replaceLine(settingsPath, softThSetting, "15", softThOffset);
         for (int i = 0; i < N; ++i)
             system(call.c_str());
+
+        if (mode == 6)
+        {
+            replaceLine(settingsPath, softThSetting, "0", softThOffset);
+            for (int i = 0; i < N; ++i)
+                system(call.c_str());
+        }
 
         resetSettings(settingsPath, program);
     }

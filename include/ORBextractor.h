@@ -5,6 +5,7 @@
 #include <opencv/cv.h>
 #include "include/Distribution.h"
 #include "include/FAST.h"
+#include "include/FeatureFileInterface.h"
 
 
 #ifndef NDEBUG
@@ -121,6 +122,19 @@ public:
 
     std::vector<cv::Mat> mvImagePyramid;
 
+    void inline SetLoadPath(std::string &path)
+    {
+        loadPath = path;
+    }
+    void inline EnablePrecomputedFeatures(bool b)
+    {
+        usePrecomputedFeatures = b;
+    }
+    inline FeatureFileInterface* GetFileInterface()
+    {
+        return &fileInterface;
+    }
+
 protected:
 
     CV_INLINE int myRound(float value)
@@ -174,6 +188,11 @@ protected:
     std::vector<float> mvInvLevelSigma2;
 
     FASTdetector fast;
+
+    FeatureFileInterface fileInterface;
+    bool saveFeatures;
+    bool usePrecomputedFeatures;
+    std::string loadPath;
 };
 
 

@@ -68,7 +68,7 @@ src/KeyFrameDatabase.cc
 src/Sim3Solver.cc
 src/Initializer.cc
 src/Viewer.cc
-src/Distribution.cc include/Nanoflann.h include/RangeTree.h include/ORBconstants.h include/FAST.h src/FAST.cc)
+src/Distribution.cc include/Nanoflann.h include/RangeTree.h include/ORBconstants.h include/FAST.h src/FAST.cc src/FeatureFileInterface.cpp include/FeatureFileInterface.h include/Types.h)
 
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}

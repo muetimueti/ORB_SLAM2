@@ -48,7 +48,8 @@ float ORBextractor::IntensityCentroidAngle(const uchar* pointer, int step)
 ORBextractor::ORBextractor(int _nfeatures, float _scaleFactor, int _nlevels, int _iniThFAST, int _minThFAST):
         nfeatures(_nfeatures), scaleFactor(_scaleFactor), nlevels(_nlevels), iniThFAST(_iniThFAST),
         minThFAST(_minThFAST), patternsize(16), kptDistribution(Distribution::DistributionMethod::SSC),
-        distributePerLevel(true), softSSCThreshold(0), fast(_iniThFAST, _minThFAST, _nlevels)
+        distributePerLevel(true), softSSCThreshold(0), fast(_iniThFAST, _minThFAST, _nlevels),
+        fileInterface(), saveFeatures(false), usePrecomputedFeatures(false)
 {
     mvScaleFactor.resize(nlevels);
     mvInvScaleFactor.resize(nlevels);
@@ -124,6 +125,36 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
                               std::vector<cv::KeyPoint> &resultKeypoints, cv::OutputArray outputDescriptors)
 {
     std::chrono::high_resolution_clock::time_point funcEntry = std::chrono::high_resolution_clock::now();
+
+    if (usePrecomputedFeatures)
+    {
+        resultKeypoints = fileInterface.LoadFeatures(loadPath);
+
+        cv::Mat BRIEFdescriptors;
+        int nkpts = resultKeypoints.size();
+        if (nkpts <= 0)
+        {
+            outputDescriptors.release();
+        }
+        else
+        {
+            outputDescriptors.create(nkpts, 32, CV_8U);
+            BRIEFdescriptors = outputDescriptors.getMat();
+        }
+
+        fileInterface.LoadDescriptors(loadPath, BRIEFdescriptors, nkpts);
+
+        if (inputImage.empty())
+            return;
+
+        cv::Mat image = inputImage.getMat();
+        assert(image.type() == CV_8UC1);
+        ComputeScalePyramid(image);
+
+        return;
+    }
+
+
 
     if (inputImage.empty())
         return;

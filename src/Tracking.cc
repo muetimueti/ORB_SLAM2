@@ -84,7 +84,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
 
     // Max/Min Frames to insert keyframes and to check relocalisation
     mMinFrames = 0;
-    mMaxFrames = fps;
+    mMaxFrames = fps/5;
 
     cout << endl << "Camera Parameters: " << endl;
     cout << "- fx: " << fx << endl;
@@ -121,20 +121,48 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     int patternSize = fSettings["ORBextractor.patternSize"];
     int softSSCTh = fSettings["ORBextractor.softSSCThreshold"];
 
+    string loadPathRight = "/home/ralph/SLAM/SavedFeatures/kitti_seq_07/right1500f_1.100000s_3d/";
+    string loadPathLeft = "/home/ralph/SLAM/SavedFeatures/kitti_seq_07/left1500f_1.100000s_3d/";
+    bool enablePrecomputed = false;
+
 
     mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
     mpORBextractorLeft->SetDistribution(mode);
     mpORBextractorLeft->SetDistributionPerLevel((bool)distributePerLevel);
     mpORBextractorLeft->SetScoreType(static_cast<FASTdetector::ScoreType>(scoreType));
     mpORBextractorLeft->SetSoftSSCThreshold(softSSCTh);
+    mpORBextractorLeft->EnablePrecomputedFeatures(enablePrecomputed);
+    mpORBextractorLeft->SetLoadPath(loadPathLeft);
     if (patternSize != 16)
         mpORBextractorLeft->SetPatternsize(patternSize);
 
     if(sensor==System::STEREO)
+    {
         mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        mpORBextractorRight->SetDistribution(mode);
+        mpORBextractorRight->SetDistributionPerLevel((bool)distributePerLevel);
+        mpORBextractorRight->SetScoreType(static_cast<FASTdetector::ScoreType>(scoreType));
+        mpORBextractorRight->SetSoftSSCThreshold(softSSCTh);
+        mpORBextractorRight->EnablePrecomputedFeatures(enablePrecomputed);
+        mpORBextractorRight->SetLoadPath(loadPathRight);
+        if (patternSize != 16)
+            mpORBextractorRight->SetPatternsize(patternSize);
+    }
+
 
     if(sensor==System::MONOCULAR)
+    {
         mpIniORBextractor = new ORBextractor(2*nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
+        mpIniORBextractor->SetDistribution(mode);
+        mpIniORBextractor->SetDistributionPerLevel((bool)distributePerLevel);
+        mpIniORBextractor->SetScoreType(static_cast<FASTdetector::ScoreType>(scoreType));
+        mpIniORBextractor->SetSoftSSCThreshold(softSSCTh);
+        mpIniORBextractor->EnablePrecomputedFeatures(false);
+        mpIniORBextractor->SetLoadPath(loadPathLeft);
+        if (patternSize != 16)
+            mpIniORBextractor->SetPatternsize(patternSize);
+    }
+
 
     cout << endl  << "ORB Extractor Parameters: " << endl;
     cout << "- Number of Features: " << nFeatures << endl;
@@ -486,7 +514,7 @@ void Tracking::Track()
         {
             if(mpMap->KeyFramesInMap()<=5)
             {
-                cout << "Track lost soon after initialisation, reseting..." << endl;
+                cout << "Track lost soon after initialisation, resetting..." << endl;
                 mpSystem->Reset();
                 return;
             }
@@ -1041,13 +1069,13 @@ bool Tracking::NeedNewKeyFrame()
     // Condition 1a: More than "MaxFrames" have passed from last keyframe insertion
     const bool c1a = mCurrentFrame.mnId>=mnLastKeyFrameId+mMaxFrames;
     // Condition 1b: More than "MinFrames" have passed and Local Mapping is idle
-    const bool c1b = (mCurrentFrame.mnId>=mnLastKeyFrameId+mMinFrames && bLocalMappingIdle);
+    //const bool c1b = (mCurrentFrame.mnId>=mnLastKeyFrameId+mMinFrames && bLocalMappingIdle);
     //Condition 1c: tracking is weak
-    const bool c1c =  mSensor!=System::MONOCULAR && (mnMatchesInliers<nRefMatches*0.25 || bNeedToInsertClose) ;
+    //const bool c1c =  mSensor!=System::MONOCULAR && (mnMatchesInliers<nRefMatches*0.25 || bNeedToInsertClose) ;
     // Condition 2: Few tracked points compared to reference keyframe. Lots of visual odometry compared to map matches.
-    const bool c2 = ((mnMatchesInliers<nRefMatches*thRefRatio|| bNeedToInsertClose) && mnMatchesInliers>15);
+    //const bool c2 = ((mnMatchesInliers<nRefMatches*thRefRatio|| bNeedToInsertClose) && mnMatchesInliers>15);
 
-    if((c1a||c1b||c1c)&&c2)
+    if(c1a) //if((c1a||c1b||c1c)&&c2)
     {
         // If the mapping accepts keyframes, insert keyframe.
         // Otherwise send a signal to interrupt BA

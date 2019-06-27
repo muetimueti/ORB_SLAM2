@@ -45,6 +45,8 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    std::chrono::steady_clock::time_point BEGIN = std::chrono::steady_clock::now();
+
     // Retrieve paths to images
     vector<string> vstrImageLeft;
     vector<string> vstrImageRight;
@@ -125,6 +127,8 @@ int main(int argc, char **argv)
     // Stop all threads
     SLAM.Shutdown();
 
+    std::chrono::steady_clock::time_point END = std::chrono::steady_clock::now();
+
     // Tracking time statistics
     sort(vTimesTrack.begin(),vTimesTrack.end());
     float totaltime = 0;
@@ -135,6 +139,7 @@ int main(int argc, char **argv)
     cout << "-------" << endl << endl;
     cout << "median tracking time: " << vTimesTrack[nImages/2] << endl;
     cout << "mean tracking time: " << totaltime/nImages << endl;
+    cout << "total runtime: " << std::chrono::duration_cast<std::chrono::seconds>(END-BEGIN).count() << endl;
 
     // Save camera trajectory
     string name;
