@@ -39,6 +39,7 @@ using namespace settings;
 
 void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageFilenamesRGB,
                 vector<string> &vstrImageFilenamesD, vector<double> &vTimestamps);
+string GetDistributionName(Distribution::DistributionMethod d);
 
 /**
  * @param argc needs to be 6
@@ -50,6 +51,15 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
 void replaceLine(string &path, string &toFind, string set, int offset);
 void resetSettings(string settingsPath, string program);
 
+typedef struct ORBSlamSettings
+{
+    int nFeatures;
+    float scaleFactor;
+    int nLevels;
+    Distribution::DistributionMethod kptDistribution;
+    int softSSCThreshold;
+} ORBSlamSettings;
+void CallORBSlamAndEvaluate(string &call, ORBSlamSettings settings, string program, int iter);
 
 int main(int argc, char **argv)
 {
@@ -85,28 +95,34 @@ int main(int argc, char **argv)
     else
         call = euroccall;
 
+    ORBSlamSettings activeSettings;
+    activeSettings.nLevels = 5;
+    activeSettings.nFeatures = 1500;
+    activeSettings.scaleFactor = 1.05;
+    activeSettings.softSSCThreshold = 0;
 
     resetSettings(settingsPath, program);
     int mode = 2;
-    for (; mode < 3; ++mode)
+    for (; mode < 7; ++mode)
     {
-        replaceLine(settingsPath, distributionSetting, to_string(mode), distrOffset);
-        replaceLine(settingsPath, nfeatSetting, "1500", nfeatOffset);
-        replaceLine(settingsPath, scaleFSetting, "1.10", scaleFOffset);
-        replaceLine(settingsPath, nLevelsSetting, "5", nLevelsOffset);
-        if (mode == 1)
-            replaceLine(settingsPath, softThSetting, "30", softThOffset);
-        if (mode == 6)
-            replaceLine(settingsPath, softThSetting, "15", softThOffset);
-        for (int i = 0; i < N; ++i)
-            system(call.c_str());
 
-        if (mode == 6)
+        activeSettings.kptDistribution = static_cast<Distribution::DistributionMethod>(mode);
+
+        replaceLine(settingsPath, distributionSetting, to_string(mode), distrOffset);
+        replaceLine(settingsPath, softThSetting, to_string(activeSettings.softSSCThreshold), softThOffset);
+        replaceLine(settingsPath, nfeatSetting, to_string(activeSettings.nFeatures), nfeatOffset);
+        replaceLine(settingsPath, nLevelsSetting, to_string(activeSettings.nLevels), nLevelsOffset);
+        replaceLine(settingsPath, scaleFSetting, to_string(activeSettings.scaleFactor), scaleFOffset);
+
+        int i = 0;
+        if (mode == 2)
+            i += 66;
+        for (; i < N; ++i)
         {
-            replaceLine(settingsPath, softThSetting, "0", softThOffset);
-            for (int i = 0; i < N; ++i)
-                system(call.c_str());
+
+            CallORBSlamAndEvaluate(call, activeSettings, program, i);
         }
+
 
         resetSettings(settingsPath, program);
     }
@@ -144,6 +160,34 @@ void replaceLine(string &path, string &toFind, string set, int offset)
     tempFile.close();
 }
 
+
+void CallORBSlamAndEvaluate(string &call, ORBSlamSettings settings, string program, int iter)
+{
+    system(call.c_str());
+    std::string changeDir = "(cd /home/ralph/CLionProjects/ORB_SLAM2/trajectories/";
+    changeDir += program == "kitti" ? "stereo_kitti/kitti_seq_07/" :
+            program == "rgbd" ? "rgbd_tum/rgbd_dataset_freiburg1_room/" :
+            "stereo_euroc/mh5/";
+    //system(changeDir.c_str());
+
+    string addInfo;
+    addInfo = (settings.kptDistribution == Distribution::SSC || settings.kptDistribution == Distribution::RANMS) ?
+              (to_string(settings.softSSCThreshold)+"Th") : "";
+
+    std::string ev = "&& evo_rpe kitti groundtruth.txt ";
+    stringstream ss;
+    ss << ev << GetDistributionName(settings.kptDistribution) << "/" << to_string(settings.nFeatures) <<
+        "_" << (to_string(settings.nLevels)+"l_") << to_string(settings.scaleFactor) << "_" << addInfo <<
+        "_" << to_string(iter+1) << ".txt -a -s --save_result " << GetDistributionName(settings.kptDistribution) <<
+        "/" << GetDistributionName(settings.kptDistribution) << "_" << to_string(settings.nFeatures) << "f_" <<
+        to_string(iter+1) << ".zip)";
+
+    string evalCall = ss.str();
+    changeDir += evalCall;
+    system(changeDir.c_str());
+}
+
+
 void resetSettings(string settingsPath, string program)
 {
     cout << "\nResetting settingsfile:\n";
@@ -159,3 +203,43 @@ void resetSettings(string settingsPath, string program)
     replaceLine(settingsPath, patternSizeSetting, "16", patternSizeOffset);
 }
 
+
+string GetDistributionName(Distribution::DistributionMethod d)
+{
+    using distr = Distribution::DistributionMethod;
+    string res;
+    switch(d)
+    {
+        case (distr::KEEP_ALL):
+            res.append("all_kept");
+            break;
+        case (distr::NAIVE):
+            res.append("topN");
+            break;
+        case (distr::RANMS):
+            res.append("ranms");
+            break;
+        case (distr::QUADTREE_ORBSLAMSTYLE):
+            res.append("quadtree");
+            break;
+        case (distr::GRID):
+            res.append("bucketing");
+            break;
+        case (distr::ANMS_KDTREE):
+            res.append("KDT-ANMS");
+            break;
+        case (distr::ANMS_RT):
+            res.append("RT-ANMS");
+            break;
+        case (distr::SSC):
+            res.append("SSC");
+            break;
+        case (distr::SOFT_SSC):
+            res.append("SoftSSC");
+            break;
+        default:
+            res.append("unknown");
+            break;
+    }
+    return res;
+}

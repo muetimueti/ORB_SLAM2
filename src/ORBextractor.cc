@@ -264,7 +264,7 @@ void ORBextractor::operator()(cv::InputArray inputImage, cv::InputArray mask,
     }
 #if ENABLE_MAX_DURATION
     //ensure feature detection always takes x ms
-    unsigned long maxDuration = 50000;
+    unsigned long maxDuration = 20000;
     std::chrono::high_resolution_clock::time_point funcExit = std::chrono::high_resolution_clock::now();
     auto funcDuration = std::chrono::duration_cast<std::chrono::microseconds>(funcExit-funcEntry).count();
     //assert(funcDuration <= maxDuration);
