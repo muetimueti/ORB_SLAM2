@@ -59,6 +59,7 @@ typedef struct ORBSlamSettings
     Distribution::DistributionMethod kptDistribution;
     int softSSCThreshold;
 } ORBSlamSettings;
+
 void CallORBSlamAndEvaluate(string &call, ORBSlamSettings settings, string program, int iter);
 
 int main(int argc, char **argv)
@@ -102,8 +103,8 @@ int main(int argc, char **argv)
     activeSettings.softSSCThreshold = 0;
 
     resetSettings(settingsPath, program);
-    int mode = 2;
-    for (; mode < 7; ++mode)
+    int mode = 7;
+    for (; mode < 8; ++mode)
     {
 
         activeSettings.kptDistribution = static_cast<Distribution::DistributionMethod>(mode);
@@ -115,14 +116,26 @@ int main(int argc, char **argv)
         replaceLine(settingsPath, scaleFSetting, to_string(activeSettings.scaleFactor), scaleFOffset);
 
         int i = 0;
-        if (mode == 2)
-            i += 66;
+        if (mode == 6)
+            i += 15;
+
+        if (mode == 7)
+            replaceLine(settingsPath, softThSetting, to_string(10), softThOffset);
+
         for (; i < N; ++i)
         {
-
             CallORBSlamAndEvaluate(call, activeSettings, program, i);
         }
 
+        if (mode == 6)
+        {
+            replaceLine(settingsPath, softThSetting, to_string(15), softThOffset);
+            for (; i < N; ++i)
+            {
+
+                CallORBSlamAndEvaluate(call, activeSettings, program, i);
+            }
+        }
 
         resetSettings(settingsPath, program);
     }
@@ -163,24 +176,28 @@ void replaceLine(string &path, string &toFind, string set, int offset)
 
 void CallORBSlamAndEvaluate(string &call, ORBSlamSettings settings, string program, int iter)
 {
-    system(call.c_str());
+    int failure;
+    do
+    {
+        failure = system(call.c_str());
+    }
+    while (failure);
     std::string changeDir = "(cd /home/ralph/CLionProjects/ORB_SLAM2/trajectories/";
     changeDir += program == "kitti" ? "stereo_kitti/kitti_seq_07/" :
-            program == "rgbd" ? "rgbd_tum/rgbd_dataset_freiburg1_room/" :
-            "stereo_euroc/mh5/";
-    //system(changeDir.c_str());
+                 program == "rgbd" ? "rgbd_tum/rgbd_dataset_freiburg1_room/" :
+                 "stereo_euroc/mh5/";
 
     string addInfo;
     addInfo = (settings.kptDistribution == Distribution::SSC || settings.kptDistribution == Distribution::RANMS) ?
-              (to_string(settings.softSSCThreshold)+"Th") : "";
+              (to_string(settings.softSSCThreshold) + "Th") : "";
 
     std::string ev = "&& evo_rpe kitti groundtruth.txt ";
     stringstream ss;
     ss << ev << GetDistributionName(settings.kptDistribution) << "/" << to_string(settings.nFeatures) <<
-        "_" << (to_string(settings.nLevels)+"l_") << to_string(settings.scaleFactor) << "_" << addInfo <<
-        "_" << to_string(iter+1) << ".txt -a -s --save_result " << GetDistributionName(settings.kptDistribution) <<
-        "/" << GetDistributionName(settings.kptDistribution) << "_" << to_string(settings.nFeatures) << "f_" <<
-        to_string(iter+1) << ".zip)";
+       "_" << (to_string(settings.nLevels) + "l_") << to_string(settings.scaleFactor) << "_" << addInfo <<
+       "_" << to_string(iter + 1) << ".txt -a -s --save_result " << GetDistributionName(settings.kptDistribution) <<
+       "/" << GetDistributionName(settings.kptDistribution) << "_" << to_string(settings.nFeatures) << "f_" <<
+       to_string(iter + 1) << ".zip)";
 
     string evalCall = ss.str();
     changeDir += evalCall;

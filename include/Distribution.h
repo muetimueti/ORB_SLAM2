@@ -65,6 +65,9 @@ protected:
 
     static void DistributeKeypointsSoftSSC(std::vector<cv::KeyPoint> &kpts, int rows, int cols, int N,
                                                          float epsilon, float threshold);
+
+    static void DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, int minX, int maxX,
+                                        int minY, int maxY, int N, float threshold);
 };
 
 template <typename T>

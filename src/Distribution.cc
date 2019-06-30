@@ -11,6 +11,7 @@
 #include <iostream>
 #include <chrono>
 
+#define REPLACE_KEEP_ALL_WITH_VSSC 1
 
 
 static void RetainBestN(std::vector<cv::KeyPoint> &kpts, int N)
@@ -31,7 +32,8 @@ Distribution::DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int min
         return;
     const float epsilon = 0.1;
 
-    if (mode == ANMS_RT || mode == ANMS_KDTREE || mode == SSC || mode == RANMS || mode == SOFT_SSC)
+    if (mode == ANMS_RT || mode == ANMS_KDTREE || mode == SSC || mode == RANMS || mode == SOFT_SSC ||
+            (mode == KEEP_ALL && REPLACE_KEEP_ALL_WITH_VSSC))
     {
         std::vector<int> responseVector;
         for (int i = 0; i < kpts.size(); i++)
@@ -67,7 +69,11 @@ Distribution::DistributeKeypoints(std::vector<cv::KeyPoint> &kpts, const int min
         }
         case KEEP_ALL :
         {
+#if REPLACE_KEEP_ALL_WITH_VSSC
+            DistributeKeypointsVSSC(kpts, minX, maxX, minY, maxY, N, softSSCThreshold);
+#else
             break;
+#endif
         }
         case ANMS_KDTREE :
         {
@@ -285,9 +291,6 @@ void Distribution::DistributeKeypointsQuadTree(std::vector<cv::KeyPoint>& kpts, 
 void Distribution::DistributeKeypointsQuadTree_ORBSLAMSTYLE(std::vector<cv::KeyPoint>& kpts, const int minX,
                                                             const int maxX, const int minY, const int maxY, const int N)
 {
-    //TODO: fix so results equal orbslam's results
-    // (seems it literally cannot be done, as orbslams implementation is not deterministic)
-
     assert(!kpts.empty());
 
     const int nroots = round(static_cast<float>(maxX-minX)/(maxY-minY));
@@ -1044,6 +1047,77 @@ void Distribution::DistributeKeypointsSoftSSC(std::vector<cv::KeyPoint> &kpts, i
             low = width + 1;
 
         prevwidth = width;
+    }
+
+    std::vector<cv::KeyPoint> reskpts;
+    for (int i = 0; i < resultIndices.size(); ++i)
+    {
+        reskpts.emplace_back(kpts[resultIndices[i]]);
+    }
+    kpts = reskpts;
+}
+
+void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, const int minX, const int maxX,
+                                           const int minY, const int maxY, int N, float threshold)
+{
+    int cols = maxX - minX;
+    int rows = maxY - minY;
+
+    std::vector<int> resultIndices;
+    resultIndices.reserve(kpts.size());
+
+    int median = kpts[kpts.size()/2].response;
+
+    float c = 1, width = 6;
+    int cellCols = std::floor(cols/c);
+    int cellRows = std::floor(rows/c);
+
+    int nCells = (cellRows+1)*(cellCols+1);
+
+    std::vector<int> covered(nCells, -1);
+
+    resultIndices.clear();
+
+    for (int i = 0; i < kpts.size(); ++i)
+    {
+        width = 6;
+        int row = (int)((kpts[i].pt.y)/c);
+        int col = (int)((kpts[i].pt.x)/c);
+
+        int score = kpts[i].response;
+
+        if (covered[row*cellCols + col] < score - threshold)
+        {
+            if (score > median + 40)
+                ++width;
+            else if (score < median - 40)
+                --width;
+            int rowMin = row - (int)(width) >= 0 ? (row - (int)(width)) : 0;
+            int rowMax = row + (int)(width) <= cellRows ? (row + (int)(width)) : cellRows;
+            int colMin = col - (int)(width) >= 0 ? (col - (int)(width)) : 0;
+            int colMax = col + (int)(width) <= cellCols ? (col + (int)(width)) : cellCols;
+
+            bool best = true;
+            for (int dy = rowMin; dy <= rowMax; ++dy)
+            {
+                for (int dx = colMin; dx <= colMax; ++dx)
+                {
+                    if (covered[dy*cellCols + dx] < score)
+                    {
+                        covered[dy*cellCols + dx] = score;
+                    }
+                    else
+                    {
+                        best = false;
+                        break;
+                    }
+                }
+            }
+            if (best)
+                resultIndices.emplace_back(i);
+        }
+        if (resultIndices.size() > N)
+            break;
     }
 
     std::vector<cv::KeyPoint> reskpts;
