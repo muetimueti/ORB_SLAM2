@@ -97,7 +97,7 @@ int main(int argc, char **argv)
         call = euroccall;
 
     ORBSlamSettings activeSettings;
-    activeSettings.nLevels = 5;
+    activeSettings.nLevels = 4;
     activeSettings.nFeatures = 1500;
     activeSettings.scaleFactor = 1.05;
     activeSettings.softSSCThreshold = 0;
@@ -106,6 +106,10 @@ int main(int argc, char **argv)
     int mode = 7;
     for (; mode < 8; ++mode)
     {
+        int maxIter = N;
+        int i = 0;
+        if (mode != 7)
+            i = 20;
 
         activeSettings.kptDistribution = static_cast<Distribution::DistributionMethod>(mode);
 
@@ -115,26 +119,34 @@ int main(int argc, char **argv)
         replaceLine(settingsPath, nLevelsSetting, to_string(activeSettings.nLevels), nLevelsOffset);
         replaceLine(settingsPath, scaleFSetting, to_string(activeSettings.scaleFactor), scaleFOffset);
 
-        int i = 0;
-        if (mode == 6)
-            i += 15;
+        for (i = 3; i < 15; ++i)
+            CallORBSlamAndEvaluate(call, activeSettings, program, i);
 
-        if (mode == 7)
-            replaceLine(settingsPath, softThSetting, to_string(10), softThOffset);
+        activeSettings.softSSCThreshold = 15;
 
-        for (; i < N; ++i)
+        replaceLine(settingsPath, softThSetting, to_string(activeSettings.softSSCThreshold), softThOffset);
+
+        for (i = 3; i < 15; ++i)
+            CallORBSlamAndEvaluate(call, activeSettings, program, i);
+
+        activeSettings.softSSCThreshold = 30;
+
+        replaceLine(settingsPath, softThSetting, to_string(activeSettings.softSSCThreshold), softThOffset);
+
+        for (i = 3; i < 15; ++i)
+            CallORBSlamAndEvaluate(call, activeSettings, program, i);
+
+        activeSettings.softSSCThreshold = 50;
+
+        replaceLine(settingsPath, softThSetting, to_string(activeSettings.softSSCThreshold), softThOffset);
+        for (i = 3; i < 15; ++i)
+            CallORBSlamAndEvaluate(call, activeSettings, program, i);
+
+
+        exit(EXIT_SUCCESS);
+        for (; i < maxIter; ++i)
         {
             CallORBSlamAndEvaluate(call, activeSettings, program, i);
-        }
-
-        if (mode == 6)
-        {
-            replaceLine(settingsPath, softThSetting, to_string(15), softThOffset);
-            for (; i < N; ++i)
-            {
-
-                CallORBSlamAndEvaluate(call, activeSettings, program, i);
-            }
         }
 
         resetSettings(settingsPath, program);
@@ -188,15 +200,18 @@ void CallORBSlamAndEvaluate(string &call, ORBSlamSettings settings, string progr
                  "stereo_euroc/mh5/";
 
     string addInfo;
-    addInfo = (settings.kptDistribution == Distribution::SSC || settings.kptDistribution == Distribution::RANMS) ?
+    addInfo = (settings.kptDistribution == Distribution::SSC || settings.kptDistribution == Distribution::RANMS
+            || settings.kptDistribution == Distribution::KEEP_ALL) ?
               (to_string(settings.softSSCThreshold) + "Th") : "";
 
     std::string ev = "&& evo_rpe kitti groundtruth.txt ";
+    std::string evtum = "&& evo_rpe tum groundtruth.txt ";
+    std::string eveur = "&& evo_rpe euroc groundtruth.csv";
     stringstream ss;
-    ss << ev << GetDistributionName(settings.kptDistribution) << "/" << to_string(settings.nFeatures) <<
+    ss << (program == "kitti"? ev : program == "rgbd"? evtum : eveur) << GetDistributionName(settings.kptDistribution) << "/" << to_string(settings.nFeatures) <<
        "_" << (to_string(settings.nLevels) + "l_") << to_string(settings.scaleFactor) << "_" << addInfo <<
        "_" << to_string(iter + 1) << ".txt -a -s --save_result " << GetDistributionName(settings.kptDistribution) <<
-       "/" << GetDistributionName(settings.kptDistribution) << "_" << to_string(settings.nFeatures) << "f_" <<
+       "/" << GetDistributionName(settings.kptDistribution) << "_" << to_string(settings.nFeatures) << "f_" << addInfo <<
        to_string(iter + 1) << ".zip)";
 
     string evalCall = ss.str();

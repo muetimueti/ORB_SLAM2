@@ -120,7 +120,7 @@ int main(int argc, char **argv)
     float scalefac = SLAM.GetTracker()->GetLeftExtractor()->GetScaleFactor();
     string distributionName = GetDistributionName(d);
     string addInfo;
-    addInfo = (d == Distribution::SSC || d == Distribution::RANMS) ?
+    addInfo = (d == Distribution::SSC || d == Distribution::RANMS || d == Distribution::KEEP_ALL) ?
             (to_string(SLAM.GetTracker()->GetLeftExtractor()->GetSoftSSCThreshold())+"Th")
             : "";
 
@@ -177,7 +177,7 @@ int main(int argc, char **argv)
         {
             SLAM.SaveTrajectoryKITTI(sC);
             sK += "_KT.txt";
-            SLAM.SaveKeyFrameTrajectoryTUM(sK);
+            //SLAM.SaveKeyFrameTrajectoryTUM(sK);
             break;
         }
         if (i == 4999)

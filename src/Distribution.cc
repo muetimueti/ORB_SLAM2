@@ -12,6 +12,8 @@
 #include <chrono>
 
 #define REPLACE_KEEP_ALL_WITH_VSSC 1
+#define VSSC_V1 1
+
 
 
 static void RetainBestN(std::vector<cv::KeyPoint> &kpts, int N)
@@ -1068,7 +1070,8 @@ void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, cons
 
     int median = kpts[kpts.size()/2].response;
 
-    float c = 1, width = 6;
+    float c = 1;
+    int width, col, row;
     int cellCols = std::floor(cols/c);
     int cellRows = std::floor(rows/c);
 
@@ -1080,18 +1083,19 @@ void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, cons
 
     for (int i = 0; i < kpts.size(); ++i)
     {
-        width = 6;
-        int row = (int)((kpts[i].pt.y)/c);
-        int col = (int)((kpts[i].pt.x)/c);
+        width = 6;//std::min(rows, cols) / 60;
+        row = (int)((kpts[i].pt.y)/c);
+        col = (int)((kpts[i].pt.x)/c);
 
         int score = kpts[i].response;
 
-        if (covered[row*cellCols + col] < score - threshold)
+        if (covered[row*cellCols + col] < score + threshold)
         {
+#if VSSC_V1
             if (score > median + 40)
-                ++width;
-            else if (score < median - 40)
                 --width;
+            else if (score < median - 40)
+                ++width;
             int rowMin = row - (int)(width) >= 0 ? (row - (int)(width)) : 0;
             int rowMax = row + (int)(width) <= cellRows ? (row + (int)(width)) : cellRows;
             int colMin = col - (int)(width) >= 0 ? (col - (int)(width)) : 0;
@@ -1109,13 +1113,59 @@ void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, cons
                     else
                     {
                         best = false;
-                        break;
+                        //break;
                     }
                 }
             }
             if (best)
                 resultIndices.emplace_back(i);
         }
+#else
+
+            int var = 10;
+            int influence = width + var;
+
+            int infRowMin = row - (int)(influence) >= 0 ? (row - (int)(influence)) : 0;
+            int infRowMax = row + (int)(influence) <= cellRows ? (row + (int)(influence)) : cellRows;
+            int infColMin = col - (int)(influence) >= 0 ? (col - (int)(influence)) : 0;
+            int infColMax = col + (int)(influence) <= cellCols ? (col + (int)(influence)) : cellCols;
+
+            width -= var;
+
+            int rowMin = row - (int)(width) >= 0 ? (row - (int)(width)) : 0;
+            int rowMax = row + (int)(width) <= cellRows ? (row + (int)(width)) : cellRows;
+            int colMin = col - (int)(width) >= 0 ? (col - (int)(width)) : 0;
+            int colMax = col + (int)(width) <= cellCols ? (col + (int)(width)) : cellCols;
+
+            bool best = true;
+
+            for (int dy = rowMin; dy <= rowMax; ++dy)
+            {
+                for (int dx = colMin; dx <= colMax; ++dx)
+                {
+                    if (covered[dy*cellCols + dx] > score)
+                    {
+                        best = false;
+                        break;
+                    }
+                }
+            }
+            if (best)
+            {
+                for (int dy = infRowMin; dy <= infRowMax; ++dy)
+                {
+                    for (int dx = infColMin; dx <= infColMax; ++dx)
+                    {
+                        if (covered[dy*cellCols + dx] < score)
+                        {
+                            covered[dy*cellCols + dx] = score;
+                        }
+                    }
+                }
+                resultIndices.emplace_back(i);
+            }
+        }
+#endif
         if (resultIndices.size() > N)
             break;
     }
