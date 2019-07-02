@@ -1106,9 +1106,14 @@ void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, cons
             {
                 for (int dx = colMin; dx <= colMax; ++dx)
                 {
-                    if (covered[dy*cellCols + dx] < score)
+                    int idx = dy*cellCols + dx;
+                    if (covered[idx] < score)
                     {
-                        covered[dy*cellCols + dx] = score;
+                        covered[idx] = score;
+                    }
+                    else if (covered[idx] == score)
+                    {
+                        continue;
                     }
                     else
                     {
