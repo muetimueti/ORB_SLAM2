@@ -1072,6 +1072,9 @@ void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, cons
 
     float c = 1;
     int width, col, row;
+    int grav = std::min(rows, cols) / 100 * 2;
+    float b = sqrt(kpts.size() / N) * 2;
+    int w = (int)(b > grav? (int)b : std::ceil(b));
     int cellCols = std::floor(cols/c);
     int cellRows = std::floor(rows/c);
 
@@ -1083,19 +1086,19 @@ void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, cons
 
     for (int i = 0; i < kpts.size(); ++i)
     {
-        width = 6;//std::min(rows, cols) / 60;
+        width = w;
         row = (int)((kpts[i].pt.y)/c);
         col = (int)((kpts[i].pt.x)/c);
 
         int score = kpts[i].response;
 
-        if (covered[row*cellCols + col] < score + threshold)
+        if (covered[row*cellCols + col] <= score + threshold)
         {
 #if VSSC_V1
-            if (score > median + 40)
-                --width;
-            else if (score < median - 40)
-                ++width;
+            //if (score > median + 40)
+            //    --width;
+            //else if (score < median - 40)
+            //    ++width;
             int rowMin = row - (int)(width) >= 0 ? (row - (int)(width)) : 0;
             int rowMax = row + (int)(width) <= cellRows ? (row + (int)(width)) : cellRows;
             int colMin = col - (int)(width) >= 0 ? (col - (int)(width)) : 0;
@@ -1111,10 +1114,11 @@ void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, cons
                     {
                         covered[idx] = score;
                     }
-                    else if (covered[idx] == score)
-                    {
-                        continue;
-                    }
+                    ///for some reason better without
+                    //else if (covered[idx] == score)
+                    //{
+                    //    continue;
+                    //}
                     else
                     {
                         best = false;
@@ -1126,7 +1130,7 @@ void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, cons
                 resultIndices.emplace_back(i);
         }
 #else
-
+            /*
             int var = 10;
             int influence = width + var;
 
@@ -1136,6 +1140,11 @@ void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, cons
             int infColMax = col + (int)(influence) <= cellCols ? (col + (int)(influence)) : cellCols;
 
             width -= var;
+            */
+            if (score > median + 40)
+                --width;
+            else if (score < median - 40)
+                ++width;
 
             int rowMin = row - (int)(width) >= 0 ? (row - (int)(width)) : 0;
             int rowMax = row + (int)(width) <= cellRows ? (row + (int)(width)) : cellRows;
@@ -1157,9 +1166,10 @@ void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, cons
             }
             if (best)
             {
-                for (int dy = infRowMin; dy <= infRowMax; ++dy)
+                resultIndices.emplace_back(i);
+                for (int dy = rowMin; dy <= rowMax; ++dy)
                 {
-                    for (int dx = infColMin; dx <= infColMax; ++dx)
+                    for (int dx = colMin; dx <= colMax; ++dx)
                     {
                         if (covered[dy*cellCols + dx] < score)
                         {
@@ -1167,14 +1177,12 @@ void Distribution::DistributeKeypointsVSSC(std::vector<cv::KeyPoint> &kpts, cons
                         }
                     }
                 }
-                resultIndices.emplace_back(i);
             }
         }
 #endif
         if (resultIndices.size() > N)
             break;
     }
-
     std::vector<cv::KeyPoint> reskpts;
     for (int i = 0; i < resultIndices.size(); ++i)
     {
